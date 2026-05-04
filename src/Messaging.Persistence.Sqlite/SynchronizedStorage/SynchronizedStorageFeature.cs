@@ -11,6 +11,8 @@ sealed class SynchronizedStorageFeature : Feature
     protected override void Setup(FeatureConfigurationContext context)
     {
         var connectionFactory = SqliteSettings.ResolveConnectionFactory(context.Settings);
+        var tablePrefix = SqliteSettings.ResolveTablePrefix(context.Settings);
+
         context.Services.AddSingleton(connectionFactory);
 
         context.Services.AddScoped<ICompletableSynchronizedStorageSession>(sp =>
@@ -18,5 +20,13 @@ sealed class SynchronizedStorageFeature : Feature
 
         context.Services.AddScoped(sp =>
             (sp.GetRequiredService<ICompletableSynchronizedStorageSession>() as ISqliteStorageSession)!);
+
+        context.Settings.AddStartupDiagnosticsSection("Messaging.Persistence.Sqlite", new
+        {
+            PackageVersion = typeof(SqlitePersistence).Assembly.GetName().Version?.ToString() ?? "unknown",
+            TablePrefix = string.IsNullOrEmpty(tablePrefix) ? "(none)" : tablePrefix,
+            JournalMode = "WAL",
+            BusyTimeoutMs = 5000
+        });
     }
 }
