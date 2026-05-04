@@ -27,14 +27,16 @@ static class SchemaScripts
 
     public static string CreateOutboxTable(string tablePrefix) => $"""
         CREATE TABLE IF NOT EXISTS {tablePrefix}OutboxRecord (
-            MessageId           TEXT    NOT NULL PRIMARY KEY,
+            MessageId           TEXT    NOT NULL,
+            EndpointName        TEXT    NOT NULL,
             Dispatched          INTEGER NOT NULL DEFAULT 0,
             DispatchedAt        TEXT    NULL,
             OperationsJson      TEXT    NULL,
-            PersistenceVersion  TEXT    NOT NULL
+            PersistenceVersion  TEXT    NOT NULL,
+            PRIMARY KEY (MessageId, EndpointName)
         ) WITHOUT ROWID;
 
         CREATE INDEX IF NOT EXISTS IX_{tablePrefix}OutboxRecord_DispatchedAt
-            ON {tablePrefix}OutboxRecord (DispatchedAt) WHERE Dispatched = 1;
+            ON {tablePrefix}OutboxRecord (EndpointName, DispatchedAt) WHERE Dispatched = 1;
         """;
 }

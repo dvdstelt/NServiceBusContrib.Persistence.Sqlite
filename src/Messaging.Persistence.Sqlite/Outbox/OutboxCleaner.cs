@@ -7,6 +7,7 @@ using NServiceBus.Logging;
 sealed class OutboxCleaner(
     IConnectionFactory connectionFactory,
     string tablePrefix,
+    string endpointName,
     TimeSpan retentionPeriod,
     TimeSpan cleanupFrequency) : FeatureStartupTask
 {
@@ -54,7 +55,7 @@ sealed class OutboxCleaner(
             try
             {
                 await Task.Delay(cleanupFrequency, cancellationToken).ConfigureAwait(false);
-                var deleted = await CleanupOnce(connectionFactory, tablePrefix, retentionPeriod, CleanupBatchSize, cancellationToken).ConfigureAwait(false);
+                var deleted = await CleanupOnce(connectionFactory, tablePrefix, endpointName, retentionPeriod, CleanupBatchSize, cancellationToken).ConfigureAwait(false);
                 if (deleted > 0)
                 {
                     Log.InfoFormat("Outbox cleanup removed {0} dispatched record(s).", deleted);
@@ -74,6 +75,7 @@ sealed class OutboxCleaner(
     internal static async Task<int> CleanupOnce(
         IConnectionFactory connectionFactory,
         string tablePrefix,
+        string endpointName,
         TimeSpan retentionPeriod,
         int batchSize,
         CancellationToken cancellationToken = default)
@@ -83,12 +85,14 @@ sealed class OutboxCleaner(
         await using var command = connection.CreateCommand();
         command.CommandText = $"""
             DELETE FROM {tablePrefix}OutboxRecord
-            WHERE MessageId IN (
-                SELECT MessageId FROM {tablePrefix}OutboxRecord
-                WHERE Dispatched = 1 AND DispatchedAt < $cutoff
-                LIMIT $limit
-            );
+            WHERE EndpointName = $ep
+              AND MessageId IN (
+                  SELECT MessageId FROM {tablePrefix}OutboxRecord
+                  WHERE EndpointName = $ep AND Dispatched = 1 AND DispatchedAt < $cutoff
+                  LIMIT $limit
+              );
             """;
+        command.Parameters.AddWithValue("$ep", endpointName);
         command.Parameters.AddWithValue("$cutoff", cutoff);
         command.Parameters.AddWithValue("$limit", batchSize);
         return await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);

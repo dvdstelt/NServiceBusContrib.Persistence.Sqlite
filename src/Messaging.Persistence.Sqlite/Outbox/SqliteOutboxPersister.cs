@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 using NServiceBus.Extensibility;
 using NServiceBus.Outbox;
 
-sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string tablePrefix) : IOutboxStorage
+sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string tablePrefix, string endpointName) : IOutboxStorage
 {
     public const string PersistenceVersion = "1";
 
@@ -20,8 +20,9 @@ sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string 
 
         await using var connection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT Dispatched, OperationsJson FROM {outboxTable} WHERE MessageId = $id;";
+        command.CommandText = $"SELECT Dispatched, OperationsJson FROM {outboxTable} WHERE MessageId = $id AND EndpointName = $ep;";
         command.Parameters.AddWithValue("$id", messageId);
+        command.Parameters.AddWithValue("$ep", endpointName);
 
         await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -83,10 +84,11 @@ sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string 
         await using var command = sqliteTx.Connection.CreateCommand();
         command.Transaction = sqliteTx.Transaction;
         command.CommandText = $"""
-            INSERT INTO {outboxTable} (MessageId, Dispatched, OperationsJson, PersistenceVersion)
-            VALUES ($id, 0, $ops, $ver);
+            INSERT INTO {outboxTable} (MessageId, EndpointName, Dispatched, OperationsJson, PersistenceVersion)
+            VALUES ($id, $ep, 0, $ops, $ver);
             """;
         command.Parameters.AddWithValue("$id", message.MessageId);
+        command.Parameters.AddWithValue("$ep", endpointName);
         command.Parameters.AddWithValue("$ops", json);
         command.Parameters.AddWithValue("$ver", PersistenceVersion);
 
@@ -97,7 +99,7 @@ sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string 
         catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
         {
             throw new InvalidOperationException(
-                $"An outbox record with id '{message.MessageId}' already exists.", ex);
+                $"An outbox record with id '{message.MessageId}' already exists for endpoint '{endpointName}'.", ex);
         }
     }
 
@@ -110,9 +112,10 @@ sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string 
         command.CommandText = $"""
             UPDATE {outboxTable}
             SET Dispatched = 1, DispatchedAt = $when, OperationsJson = NULL
-            WHERE MessageId = $id;
+            WHERE MessageId = $id AND EndpointName = $ep;
             """;
         command.Parameters.AddWithValue("$id", messageId);
+        command.Parameters.AddWithValue("$ep", endpointName);
         command.Parameters.AddWithValue("$when", DateTime.UtcNow.ToString("O"));
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
