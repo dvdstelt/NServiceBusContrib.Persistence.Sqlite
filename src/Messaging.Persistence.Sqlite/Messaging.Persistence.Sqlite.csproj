@@ -12,6 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Messaging.Persistence.Sqlite.Tests" />
+    <InternalsVisibleTo Include="Messaging.Persistence.Sqlite.PersistenceTests" />
+    <InternalsVisibleTo Include="Messaging.Persistence.Sqlite.TransactionalSession" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\Package-README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
