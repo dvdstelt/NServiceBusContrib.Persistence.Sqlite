@@ -1,14 +1,15 @@
 namespace Messaging.Persistence.Sqlite.Outbox;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NServiceBus.Features;
-using NServiceBus.Installation;
 using NServiceBus.Outbox;
 
 sealed class OutboxFeature : Feature
 {
     public OutboxFeature()
     {
+        Enable<SynchronizedStorageFeature>();
         DependsOn<NServiceBus.Features.Outbox>();
         DependsOn<SynchronizedStorageFeature>();
     }
@@ -18,12 +19,14 @@ sealed class OutboxFeature : Feature
         var tablePrefix = SqliteSettings.ResolveTablePrefix(context.Settings);
         var retention = SqliteSettings.ResolveOutboxRetention(context.Settings);
         var cleanupFrequency = SqliteSettings.ResolveOutboxCleanupFrequency(context.Settings);
+        var connectionFactory = SqliteSettings.ResolveConnectionFactory(context.Settings);
+
+        context.Services.TryAddSingleton(connectionFactory);
 
         context.Services.AddSingleton<IOutboxStorage>(sp =>
             new SqliteOutboxPersister(sp.GetRequiredService<IConnectionFactory>(), tablePrefix));
 
-        context.Services.AddSingleton<INeedToInstallSomething>(sp =>
-            new OutboxInstaller(sp.GetRequiredService<IConnectionFactory>(), tablePrefix));
+        context.AddInstaller<OutboxInstaller>();
 
         context.RegisterStartupTask(sp => new OutboxCleaner(
             sp.GetRequiredService<IConnectionFactory>(),

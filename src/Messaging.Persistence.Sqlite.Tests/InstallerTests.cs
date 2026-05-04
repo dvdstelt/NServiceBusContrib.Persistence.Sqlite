@@ -4,6 +4,7 @@ using Messaging.Persistence.Sqlite.Outbox;
 using Messaging.Persistence.Sqlite.Sagas;
 using Messaging.Persistence.Sqlite.Subscriptions;
 using Microsoft.Data.Sqlite;
+using NServiceBus.Settings;
 using NUnit.Framework;
 
 [TestFixture]
@@ -29,7 +30,7 @@ public class InstallerTests
     [Test]
     public async Task OutboxInstaller_CreatesOutboxTable()
     {
-        var installer = new OutboxInstaller(factory, tablePrefix: "");
+        var installer = new OutboxInstaller(factory, EmptySettings());
         await installer.Install("test", CancellationToken.None);
 
         Assert.That(await TableExists("OutboxRecord"), Is.True);
@@ -38,7 +39,7 @@ public class InstallerTests
     [Test]
     public async Task OutboxInstaller_RunTwice_NoError()
     {
-        var installer = new OutboxInstaller(factory, tablePrefix: "");
+        var installer = new OutboxInstaller(factory, EmptySettings());
         await installer.Install("test", CancellationToken.None);
         Assert.DoesNotThrowAsync(() => installer.Install("test", CancellationToken.None));
     }
@@ -46,7 +47,7 @@ public class InstallerTests
     [Test]
     public async Task OutboxInstaller_AppliesTablePrefix()
     {
-        var installer = new OutboxInstaller(factory, tablePrefix: "MyApp_");
+        var installer = new OutboxInstaller(factory, SettingsWithPrefix("MyApp_"));
         await installer.Install("test", CancellationToken.None);
 
         Assert.That(await TableExists("MyApp_OutboxRecord"), Is.True);
@@ -56,7 +57,7 @@ public class InstallerTests
     [Test]
     public async Task SubscriptionInstaller_CreatesSubscriptionTable()
     {
-        var installer = new SubscriptionInstaller(factory, tablePrefix: "");
+        var installer = new SubscriptionInstaller(factory, EmptySettings());
         await installer.Install("test", CancellationToken.None);
 
         Assert.That(await TableExists("SubscriptionRecord"), Is.True);
@@ -70,6 +71,15 @@ public class InstallerTests
         await installer.Install("test", CancellationToken.None);
 
         Assert.That(await TableExists(nameof(InstallerTestSagaData)), Is.True);
+    }
+
+    static IReadOnlySettings EmptySettings() => new SettingsHolder();
+
+    static IReadOnlySettings SettingsWithPrefix(string prefix)
+    {
+        var holder = new SettingsHolder();
+        holder.Set(SettingsKeys.TablePrefix, prefix);
+        return holder;
     }
 
     async Task<bool> TableExists(string tableName)

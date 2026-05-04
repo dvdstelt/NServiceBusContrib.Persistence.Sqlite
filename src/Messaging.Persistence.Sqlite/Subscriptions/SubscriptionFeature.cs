@@ -1,20 +1,28 @@
 namespace Messaging.Persistence.Sqlite.Subscriptions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NServiceBus.Features;
-using NServiceBus.Installation;
 using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
 sealed class SubscriptionFeature : Feature
 {
-    public SubscriptionFeature() => DependsOn("NServiceBus.Features.MessageDrivenSubscriptions");
+    public SubscriptionFeature()
+    {
+        Enable<SynchronizedStorageFeature>();
+        DependsOn("NServiceBus.Features.MessageDrivenSubscriptions");
+        DependsOn<SynchronizedStorageFeature>();
+    }
 
     protected override void Setup(FeatureConfigurationContext context)
     {
         var tablePrefix = SqliteSettings.ResolveTablePrefix(context.Settings);
+        var connectionFactory = SqliteSettings.ResolveConnectionFactory(context.Settings);
+        context.Services.TryAddSingleton(connectionFactory);
+
         context.Services.AddSingleton<ISubscriptionStorage>(sp =>
             new SqliteSubscriptionPersister(sp.GetRequiredService<IConnectionFactory>(), tablePrefix));
-        context.Services.AddSingleton<INeedToInstallSomething>(sp =>
-            new SubscriptionInstaller(sp.GetRequiredService<IConnectionFactory>(), tablePrefix));
+
+        context.AddInstaller<SubscriptionInstaller>();
     }
 }
