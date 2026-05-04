@@ -15,6 +15,16 @@ static class SchemaScripts
             ON {tableName} (CorrelationId) WHERE CorrelationId IS NOT NULL;
         """;
 
+    public static string CreateSubscriptionTable(string tablePrefix) => $"""
+        CREATE TABLE IF NOT EXISTS {tablePrefix}SubscriptionRecord (
+            MessageType         TEXT NOT NULL,
+            Subscriber          TEXT NOT NULL,
+            Endpoint            TEXT NULL,
+            PersistenceVersion  TEXT NOT NULL,
+            PRIMARY KEY (MessageType, Subscriber)
+        ) WITHOUT ROWID;
+        """;
+
     public static string CreateOutboxTable(string tablePrefix) => $"""
         CREATE TABLE IF NOT EXISTS {tablePrefix}OutboxRecord (
             MessageId           TEXT    NOT NULL PRIMARY KEY,

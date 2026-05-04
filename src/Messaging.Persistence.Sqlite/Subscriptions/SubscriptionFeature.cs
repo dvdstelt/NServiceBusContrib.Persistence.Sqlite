@@ -1,6 +1,8 @@
 namespace Messaging.Persistence.Sqlite.Subscriptions;
 
+using Microsoft.Extensions.DependencyInjection;
 using NServiceBus.Features;
+using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
 sealed class SubscriptionFeature : Feature
 {
@@ -8,6 +10,8 @@ sealed class SubscriptionFeature : Feature
 
     protected override void Setup(FeatureConfigurationContext context)
     {
-        // Subscription storage registration is implemented in a later phase.
+        var tablePrefix = SqliteSettings.ResolveTablePrefix(context.Settings);
+        context.Services.AddSingleton<ISubscriptionStorage>(sp =>
+            new SqliteSubscriptionPersister(sp.GetRequiredService<IConnectionFactory>(), tablePrefix));
     }
 }
