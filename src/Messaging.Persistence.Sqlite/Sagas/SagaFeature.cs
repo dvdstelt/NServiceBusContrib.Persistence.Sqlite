@@ -2,6 +2,7 @@ namespace Messaging.Persistence.Sqlite.Sagas;
 
 using Microsoft.Extensions.DependencyInjection;
 using NServiceBus.Features;
+using NServiceBus.Installation;
 using NServiceBus.Sagas;
 
 sealed class SagaFeature : Feature
@@ -18,5 +19,7 @@ sealed class SagaFeature : Feature
         var sagaInfoCache = new SagaInfoCache(tablePrefix);
         context.Services.AddSingleton(sagaInfoCache);
         context.Services.AddSingleton<ISagaPersister, SqliteSagaPersister>();
+        context.Services.AddSingleton<INeedToInstallSomething>(sp =>
+            new SagaInstaller(sp.GetRequiredService<IConnectionFactory>(), sagaInfoCache));
     }
 }
