@@ -3,12 +3,15 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- Justification: shared NServiceBus.AcceptanceTests.Sources content files predate stricter analyzer rules. -->
+    <NoWarn>$(NoWarn);CA2007;CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8622;CS8625;CS8767;PS0013;PS0018;NSB0002;NSB0004;NSB0005;NSB0009;NSB0012</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="NServiceBus" />
     <PackageReference Include="NServiceBus.AcceptanceTesting" />
+    <PackageReference Include="NServiceBus.AcceptanceTests.Sources" />
     <PackageReference Include="NUnit" />
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="NUnit.Analyzers" />
