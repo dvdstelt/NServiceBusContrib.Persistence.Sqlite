@@ -57,22 +57,6 @@ public static class SqlitePersistenceConfig
     }
 
     /// <summary>
-    /// Caches subscription lookups for the given duration. Pass <see cref="TimeSpan.Zero"/> to disable.
-    /// </summary>
-    public static PersistenceExtensions<SqlitePersistence> SubscriptionsCacheFor(
-        this PersistenceExtensions<SqlitePersistence> persistence,
-        TimeSpan duration)
-    {
-        ArgumentNullException.ThrowIfNull(persistence);
-        if (duration < TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(duration), "Cache duration must be non-negative.");
-        }
-        persistence.GetSettings().Set(SettingsKeys.SubscriptionsCacheFor, duration);
-        return persistence;
-    }
-
-    /// <summary>
     /// Returns the outbox-specific configuration surface.
     /// </summary>
     public static OutboxConfiguration Outbox(this PersistenceExtensions<SqlitePersistence> persistence)

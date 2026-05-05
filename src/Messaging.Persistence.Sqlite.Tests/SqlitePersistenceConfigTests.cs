@@ -59,21 +59,6 @@ public class SqlitePersistenceConfigTests
     }
 
     [Test]
-    public void SubscriptionsCacheFor_NegativeDuration_Throws()
-    {
-        var persistence = Persistence();
-        Assert.Throws<ArgumentOutOfRangeException>(() => persistence.SubscriptionsCacheFor(TimeSpan.FromSeconds(-1)));
-    }
-
-    [Test]
-    public void SubscriptionsCacheFor_ZeroOrPositive_Accepted()
-    {
-        var persistence = Persistence();
-        Assert.DoesNotThrow(() => persistence.SubscriptionsCacheFor(TimeSpan.Zero));
-        Assert.DoesNotThrow(() => persistence.SubscriptionsCacheFor(TimeSpan.FromMinutes(5)));
-    }
-
-    [Test]
     public void OutboxRetention_NonPositive_Throws()
     {
         var outbox = Persistence().Outbox();
