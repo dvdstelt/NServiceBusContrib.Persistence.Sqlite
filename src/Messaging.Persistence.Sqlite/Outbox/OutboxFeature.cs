@@ -20,7 +20,7 @@ sealed class OutboxFeature : Feature
         var retention = SqliteSettings.ResolveOutboxRetention(context.Settings);
         var cleanupFrequency = SqliteSettings.ResolveOutboxCleanupFrequency(context.Settings);
         var connectionFactory = SqliteSettings.ResolveConnectionFactory(context.Settings);
-        var endpointName = context.Settings.EndpointName();
+        var endpointName = SqliteSettings.ResolveOutboxEndpointName(context.Settings);
 
         context.Services.TryAddSingleton(connectionFactory);
 

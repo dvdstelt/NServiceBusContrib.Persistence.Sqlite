@@ -1,5 +1,6 @@
 namespace Messaging.Persistence.Sqlite.TransactionalSession;
 
+using Messaging.Persistence.Sqlite;
 using NServiceBus;
 using NServiceBus.Configuration.AdvancedExtensibility;
 using NServiceBus.Features;
@@ -30,6 +31,14 @@ public static class SqliteTransactionalSessionExtensions
         var settings = persistenceExtensions.GetSettings();
         settings.Set(transactionalSessionOptions);
         settings.EnableFeature<SqliteTransactionalSession>();
+
+        // In a send-only + processor-endpoint topology the send-only endpoint writes outbox
+        // records that the processor endpoint reads back. Both endpoints must scope by the
+        // same identity (the processor endpoint name) for the outbox key match to succeed.
+        if (!string.IsNullOrEmpty(transactionalSessionOptions.ProcessorEndpoint))
+        {
+            settings.Set(SettingsKeys.OutboxEndpointName, transactionalSessionOptions.ProcessorEndpoint);
+        }
 
         return persistenceExtensions;
     }
