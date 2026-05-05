@@ -21,6 +21,13 @@ sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFacto
     public SqliteTransaction Transaction =>
         transaction ?? throw new InvalidOperationException("The synchronized storage session has not been opened.");
 
+    public SqliteCommand CreateCommand()
+    {
+        var command = Connection.CreateCommand();
+        command.Transaction = Transaction;
+        return command;
+    }
+
     public ValueTask<bool> TryOpen(IOutboxTransaction outboxTransaction, ContextBag context, CancellationToken cancellationToken = default)
     {
         if (outboxTransaction is SqliteOutboxTransaction sqliteOutbox)

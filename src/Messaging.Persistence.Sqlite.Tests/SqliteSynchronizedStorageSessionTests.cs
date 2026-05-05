@@ -162,6 +162,18 @@ public class SqliteSynchronizedStorageSessionTests
     }
 
     [Test]
+    public async Task CreateCommand_ReturnsCommandBoundToSessionTransaction()
+    {
+        await using var s = new SqliteSynchronizedStorageSession(factory);
+        await s.Open(new ContextBag());
+
+        await using var cmd = ((ISqliteStorageSession)s).CreateCommand();
+
+        Assert.That(cmd.Connection, Is.SameAs(s.Connection));
+        Assert.That(cmd.Transaction, Is.SameAs(s.Transaction));
+    }
+
+    [Test]
     public void Open_BeginTransactionThrows_OwnedConnectionIsDisposed()
     {
         // The session calls connectionFactory.OpenConnection then BeginTransaction. If

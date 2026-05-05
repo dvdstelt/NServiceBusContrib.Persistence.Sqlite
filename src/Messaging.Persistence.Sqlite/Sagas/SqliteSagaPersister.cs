@@ -27,8 +27,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
             ? null
             : Convert.ToString(correlationProperty.Value, CultureInfo.InvariantCulture);
 
-        await using var cmd = sqliteSession.Connection.CreateCommand();
-        cmd.Transaction = sqliteSession.Transaction;
+        await using var cmd = sqliteSession.CreateCommand();
         cmd.CommandText = $"""
             INSERT INTO {info.TableName} (Id, DataJson, CorrelationId, Concurrency, PersistenceVersion)
             VALUES ($id, $data, $corr, 1, $ver);
@@ -63,8 +62,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
 
         var dataJson = JsonSerializer.Serialize(sagaData, sagaDataType, SerializerOptions);
 
-        await using var cmd = sqliteSession.Connection.CreateCommand();
-        cmd.Transaction = sqliteSession.Transaction;
+        await using var cmd = sqliteSession.CreateCommand();
         cmd.CommandText = $"""
             UPDATE {info.TableName}
             SET DataJson = $data, Concurrency = Concurrency + 1
@@ -107,8 +105,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
         var info = sagaInfoCache.Get(sagaDataType);
         var oldConcurrency = RetrieveConcurrency(context, sagaDataType);
 
-        await using var cmd = sqliteSession.Connection.CreateCommand();
-        cmd.Transaction = sqliteSession.Transaction;
+        await using var cmd = sqliteSession.CreateCommand();
         cmd.CommandText = $"DELETE FROM {info.TableName} WHERE Id = $id AND Concurrency = $old;";
         cmd.Parameters.AddWithValue("$id", sagaData.Id.ToString());
         cmd.Parameters.AddWithValue("$old", oldConcurrency);
@@ -128,8 +125,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
         var sqliteSession = session.SqliteSession();
         var info = sagaInfoCache.Get(typeof(TSagaData));
 
-        await using var cmd = sqliteSession.Connection.CreateCommand();
-        cmd.Transaction = sqliteSession.Transaction;
+        await using var cmd = sqliteSession.CreateCommand();
         cmd.CommandText = $"SELECT DataJson, Concurrency FROM {info.TableName} WHERE {whereClause};";
         cmd.Parameters.AddWithValue(parameter.Name, parameter.Value);
 

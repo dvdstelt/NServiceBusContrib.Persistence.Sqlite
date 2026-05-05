@@ -14,7 +14,14 @@ public interface ISqliteStorageSession
     SqliteConnection Connection { get; }
 
     /// <summary>
-    /// The active SQLite transaction. User commands must set <see cref="SqliteCommand.Transaction"/> to this value.
+    /// The active SQLite transaction. Prefer <see cref="CreateCommand"/> over wiring this up by hand.
     /// </summary>
     SqliteTransaction Transaction { get; }
+
+    /// <summary>
+    /// Creates a new <see cref="SqliteCommand"/> already bound to <see cref="Connection"/> and
+    /// <see cref="Transaction"/>. Use this for user writes inside a handler so they enlist in the
+    /// message-scoped transaction without forgetting the binding.
+    /// </summary>
+    SqliteCommand CreateCommand();
 }

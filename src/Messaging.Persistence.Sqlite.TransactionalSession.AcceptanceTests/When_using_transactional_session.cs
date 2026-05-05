@@ -144,8 +144,7 @@ public class When_using_transactional_session : NServiceBusAcceptanceTest
 
     static async Task InsertSampleRow(ISqliteStorageSession sqliteSession, string id)
     {
-        await using var insert = sqliteSession.Connection.CreateCommand();
-        insert.Transaction = sqliteSession.Transaction;
+        await using var insert = sqliteSession.CreateCommand();
         insert.CommandText = $"INSERT INTO {SetupFixture.SampleTableName} (Id) VALUES ($id);";
         insert.Parameters.AddWithValue("$id", id);
         await insert.ExecuteNonQueryAsync();
