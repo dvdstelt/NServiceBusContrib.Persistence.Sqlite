@@ -87,6 +87,47 @@ public class OutboxCleanerTests
     }
 
     [Test]
+    public async Task TryCleanupOnceAsync_SurvivesContentionWithActiveOutboxTransaction()
+    {
+        // SQLite serialises writers, so a cleanup DELETE will fail with SQLITE_BUSY when an
+        // outbox INSERT is holding the writer lock past busy_timeout. The expectation is that
+        // the contention surfaces as a SqliteException that TryCleanupOnceAsync swallows so
+        // the periodic loop survives and tries again next interval - it must not throw or
+        // deadlock indefinitely.
+
+        var stale = DateTime.UtcNow - TimeSpan.FromDays(30);
+        await Insert("stale-dispatched", dispatched: true, dispatchedAt: stale);
+
+        var outboxPersister = new Messaging.Persistence.Sqlite.Outbox.SqliteOutboxPersister(
+            factory, tablePrefix: "", endpointName: TestEndpoint);
+        var pendingMessage = new NServiceBus.Outbox.OutboxMessage(
+            "in-flight",
+            [new NServiceBus.Outbox.TransportOperation(
+                "op", new NServiceBus.Transport.DispatchProperties(),
+                System.Text.Encoding.UTF8.GetBytes("body"),
+                new Dictionary<string, string>())]);
+
+        await using var outboxTx = await outboxPersister.BeginTransaction(new NServiceBus.Extensibility.ContextBag());
+        await outboxPersister.Store(pendingMessage, outboxTx, new NServiceBus.Extensibility.ContextBag());
+
+        Assert.DoesNotThrowAsync(() => OutboxCleaner.TryCleanupOnceAsync(
+            factory, tablePrefix: "", endpointName: TestEndpoint,
+            retentionPeriod: TimeSpan.FromDays(7),
+            batchSize: 100, cancellationToken: CancellationToken.None));
+
+        await outboxTx.Commit();
+
+        // After contention clears, cleanup must succeed on the next attempt.
+        var deleted = await OutboxCleaner.CleanupOnce(
+            factory, tablePrefix: "", endpointName: TestEndpoint,
+            retentionPeriod: TimeSpan.FromDays(7),
+            batchSize: 100, cancellationToken: CancellationToken.None);
+
+        Assert.That(deleted, Is.EqualTo(1));
+        Assert.That(await Exists("in-flight"), Is.True, "the outbox tx must commit cleanly");
+    }
+
+    [Test]
     public async Task CleanupOnce_OnlyAffectsConfiguredEndpoint()
     {
         var old = DateTime.UtcNow - TimeSpan.FromDays(30);
