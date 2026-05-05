@@ -1,5 +1,6 @@
 namespace Messaging.Persistence.Sqlite.Outbox;
 
+using Microsoft.Data.Sqlite;
 using NServiceBus;
 using NServiceBus.Features;
 using NServiceBus.Logging;
@@ -33,16 +34,12 @@ sealed class OutboxCleaner(
         }
 
         await cts.CancelAsync().ConfigureAwait(false);
-        try
+        if (cleanupLoop is not null)
         {
-            if (cleanupLoop is not null)
-            {
-                await cleanupLoop.ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // expected during shutdown
+            // RunCleanupLoop swallows OperationCanceledException internally, so the awaited
+            // task should always RanToCompletion on a clean shutdown. Anything else is a real
+            // failure and should surface here.
+            await cleanupLoop.ConfigureAwait(false);
         }
         cts.Dispose();
         cts = null;
@@ -55,20 +52,50 @@ sealed class OutboxCleaner(
             try
             {
                 await Task.Delay(cleanupFrequency, cancellationToken).ConfigureAwait(false);
-                var deleted = await CleanupOnce(connectionFactory, tablePrefix, endpointName, retentionPeriod, CleanupBatchSize, cancellationToken).ConfigureAwait(false);
-                if (deleted > 0)
-                {
-                    Log.InfoFormat("Outbox cleanup removed {0} dispatched record(s).", deleted);
-                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 return;
             }
-            catch (Exception ex)
+
+            await TryCleanupOnceAsync(connectionFactory, tablePrefix, endpointName, retentionPeriod, CleanupBatchSize, cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Runs one cleanup pass. Expected database/IO failures are logged and swallowed so the
+    /// loop continues; truly unexpected exceptions propagate so the loop crashes loudly rather
+    /// than silently spinning on a permanently broken state.
+    /// </summary>
+    internal static async Task TryCleanupOnceAsync(
+        IConnectionFactory connectionFactory,
+        string tablePrefix,
+        string endpointName,
+        TimeSpan retentionPeriod,
+        int batchSize,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var deleted = await CleanupOnce(connectionFactory, tablePrefix, endpointName, retentionPeriod, batchSize, cancellationToken)
+                .ConfigureAwait(false);
+            if (deleted > 0)
             {
-                Log.Warn("Outbox cleanup iteration failed.", ex);
+                Log.InfoFormat("Outbox cleanup removed {0} dispatched record(s).", deleted);
             }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (SqliteException ex)
+        {
+            Log.Error("Outbox cleanup failed with a SQLite error.", ex);
+        }
+        catch (IOException ex)
+        {
+            Log.Error("Outbox cleanup failed with an I/O error.", ex);
         }
     }
 
