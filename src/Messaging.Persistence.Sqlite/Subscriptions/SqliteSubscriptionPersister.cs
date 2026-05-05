@@ -17,9 +17,14 @@ sealed class SqliteSubscriptionPersister(IConnectionFactory connectionFactory, s
 
         await using var connection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
         await using var command = connection.CreateCommand();
+        // Preserve any previously-recorded Endpoint when the new caller omits it.
+        // INSERT OR REPLACE would erase the column to NULL on every re-subscribe.
         command.CommandText = $"""
-            INSERT OR REPLACE INTO {subscriptionTable} (MessageType, Subscriber, Endpoint, PersistenceVersion)
-            VALUES ($mt, $sub, $ep, $ver);
+            INSERT INTO {subscriptionTable} (MessageType, Subscriber, Endpoint, PersistenceVersion)
+            VALUES ($mt, $sub, $ep, $ver)
+            ON CONFLICT(MessageType, Subscriber) DO UPDATE SET
+                Endpoint = COALESCE(excluded.Endpoint, Endpoint),
+                PersistenceVersion = excluded.PersistenceVersion;
             """;
         command.Parameters.AddWithValue("$mt", messageType.TypeName);
         command.Parameters.AddWithValue("$sub", subscriber.TransportAddress);

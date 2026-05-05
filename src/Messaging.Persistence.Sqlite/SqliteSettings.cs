@@ -33,11 +33,9 @@ static class SqliteSettings
     public static TimeSpan ResolveOutboxCleanupFrequency(IReadOnlySettings settings) =>
         settings.TryGet<TimeSpan>(SettingsKeys.OutboxCleanupFrequency, out var f) ? f : DefaultOutboxCleanupFrequency;
 
-    /// <summary>
-    /// The endpoint name used to scope outbox records. Defaults to the local endpoint's name.
-    /// In a send-only + processor-endpoint TransactionalSession topology this is overridden to
-    /// the ProcessorEndpoint so both endpoints read and write the same set of outbox rows.
-    /// </summary>
+    // The send-only + processor-endpoint TransactionalSession topology overrides this to the
+    // ProcessorEndpoint so both endpoints read and write the same outbox rows. Otherwise it
+    // falls back to the local endpoint name.
     public static string ResolveOutboxEndpointName(IReadOnlySettings settings) =>
         settings.TryGet<string>(SettingsKeys.OutboxEndpointName, out var name) && !string.IsNullOrEmpty(name)
             ? name

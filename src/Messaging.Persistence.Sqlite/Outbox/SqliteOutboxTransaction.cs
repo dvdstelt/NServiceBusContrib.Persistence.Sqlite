@@ -17,10 +17,10 @@ sealed class SqliteOutboxTransaction(SqliteConnection connection, SqliteTransact
     }
 
 #pragma warning disable PS0018 // CancellationToken cannot be added to the IAsyncDisposable.DisposeAsync contract
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
 #pragma warning restore PS0018
     {
-        Dispose();
-        return ValueTask.CompletedTask;
+        await Transaction.DisposeAsync().ConfigureAwait(false);
+        await Connection.DisposeAsync().ConfigureAwait(false);
     }
 }

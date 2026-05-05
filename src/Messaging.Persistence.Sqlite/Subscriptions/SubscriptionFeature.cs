@@ -10,6 +10,7 @@ sealed class SubscriptionFeature : Feature
     public SubscriptionFeature()
     {
         Enable<SynchronizedStorageFeature>();
+        // MessageDrivenSubscriptions is internal in NServiceBus 10.x, so we depend on it by name.
         DependsOn("NServiceBus.Features.MessageDrivenSubscriptions");
         DependsOn<SynchronizedStorageFeature>();
     }

@@ -86,10 +86,21 @@ sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFacto
     }
 
 #pragma warning disable PS0018 // CancellationToken cannot be added to the IAsyncDisposable.DisposeAsync contract
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
 #pragma warning restore PS0018
     {
-        Dispose();
-        return ValueTask.CompletedTask;
+        if (ownsConnection)
+        {
+            if (transaction is not null)
+            {
+                await transaction.DisposeAsync().ConfigureAwait(false);
+            }
+            if (connection is not null)
+            {
+                await connection.DisposeAsync().ConfigureAwait(false);
+            }
+        }
+        transaction = null;
+        connection = null;
     }
 }

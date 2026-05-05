@@ -125,4 +125,22 @@ public class SqliteSubscriptionPersisterTests
         Assert.That(subscribers, Has.Count.EqualTo(1));
         Assert.That(subscribers[0].Endpoint, Is.Null);
     }
+
+    [Test]
+    public async Task Subscribe_AfterPriorSubscribeWithEndpoint_DoesNotClobberToNull()
+    {
+        // Re-subscribing the same transport address without an endpoint must not erase a
+        // previously-recorded endpoint. INSERT OR REPLACE would do exactly that.
+        var withEndpoint = new Subscriber("queue://A", "EndpointA");
+        var withoutEndpoint = new Subscriber("queue://A", endpoint: null);
+        var messageType = new MessageType("Foo.Preserve", new Version(1, 0));
+
+        await persister.Subscribe(withEndpoint, messageType, new ContextBag());
+        await persister.Subscribe(withoutEndpoint, messageType, new ContextBag());
+
+        var subscribers = (await persister.GetSubscriberAddressesForMessage([messageType], new ContextBag())).ToList();
+        Assert.That(subscribers, Has.Count.EqualTo(1));
+        Assert.That(subscribers[0].Endpoint, Is.EqualTo("EndpointA"),
+            "the previously-recorded endpoint must survive a subsequent endpoint-less subscribe");
+    }
 }

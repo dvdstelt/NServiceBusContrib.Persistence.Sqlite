@@ -152,6 +152,18 @@ public class SqliteOutboxPersisterTests
     }
 
     [Test]
+    public void SetAsDispatched_OnMissingMessage_IsSilentNoOp()
+    {
+        // The NSB outbox calls SetAsDispatched after successful transport dispatch. If the row
+        // is missing it has either been cleaned up or is partitioned under a different
+        // EndpointName. Either way the contract permits a silent no-op; this test locks that
+        // behaviour in so a future change to throw on row-count == 0 surfaces as a deliberate
+        // decision rather than an accident.
+        Assert.DoesNotThrowAsync(() =>
+            persister.SetAsDispatched("never-stored", new ContextBag()));
+    }
+
+    [Test]
     public async Task Store_NonUniqueConstraintViolation_IsNotTranslatedAsDuplicate()
     {
         // Recreate the outbox table with an extra CHECK constraint so we can exercise a

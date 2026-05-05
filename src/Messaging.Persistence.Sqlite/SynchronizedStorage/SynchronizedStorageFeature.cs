@@ -21,12 +21,13 @@ sealed class SynchronizedStorageFeature : Feature
         context.Services.AddScoped(sp =>
             (sp.GetRequiredService<ICompletableSynchronizedStorageSession>() as ISqliteStorageSession)!);
 
+        // Only report values we know are accurate. Pragma-driven settings (journal mode,
+        // busy timeout) are applied by DefaultConnectionFactory but a user-supplied
+        // ConnectionFactory may not, so we don't claim them here.
         context.Settings.AddStartupDiagnosticsSection("Messaging.Persistence.Sqlite", new
         {
             PackageVersion = typeof(SqlitePersistence).Assembly.GetName().Version?.ToString() ?? "unknown",
-            TablePrefix = string.IsNullOrEmpty(tablePrefix) ? "(none)" : tablePrefix,
-            JournalMode = "WAL",
-            BusyTimeoutMs = 5000
+            TablePrefix = string.IsNullOrEmpty(tablePrefix) ? "(none)" : tablePrefix
         });
     }
 }

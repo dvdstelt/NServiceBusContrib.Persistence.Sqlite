@@ -25,7 +25,7 @@ sealed class SagaInstaller(IConnectionFactory connectionFactory, SagaInfoCache s
             .Where(assembly => !assembly.IsDynamic)
             .SelectMany(SafeGetTypes)
             .Where(type => typeof(IContainSagaData).IsAssignableFrom(type)
-                           && type is { IsClass: true, IsAbstract: false }
+                           && type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false }
                            && type != typeof(ContainSagaData))
             .Distinct();
 
