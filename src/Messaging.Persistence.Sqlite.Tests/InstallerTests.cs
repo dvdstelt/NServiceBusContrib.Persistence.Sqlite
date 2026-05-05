@@ -64,13 +64,22 @@ public class InstallerTests
     }
 
     [Test]
-    public async Task SagaInstaller_CreatesTablesForDiscoveredSagas()
+    public async Task SagaInstaller_CreatesTablesOnlyForRegisteredSagas()
     {
+        // The installer must build tables for sagas registered in SagaMetadataCollection,
+        // not every IContainSagaData type the assembly scanner can find. Otherwise unrelated
+        // sagas in referenced libraries get tables they will never use.
         var cache = new SagaInfoCache(tablePrefix: "");
-        var installer = new SagaInstaller(factory, cache);
+        var metadata = new NServiceBus.Sagas.SagaMetadataCollection();
+        metadata.AddRange(NServiceBus.Sagas.SagaMetadata.CreateMany([typeof(InstallerTestSaga)]));
+
+        var installer = new SagaInstaller(factory, cache, metadata);
         await installer.Install("test", CancellationToken.None);
 
-        Assert.That(await TableExists(nameof(InstallerTestSagaData)), Is.True);
+        Assert.That(await TableExists(nameof(InstallerTestSagaData)), Is.True,
+            "the registered saga's table must be created");
+        Assert.That(await TableExists(nameof(NotRegisteredSagaData)), Is.False,
+            "an unregistered saga's table must NOT be created");
     }
 
     static IReadOnlySettings EmptySettings() => new SettingsHolder();
@@ -94,5 +103,24 @@ public class InstallerTests
     public sealed class InstallerTestSagaData : NServiceBus.ContainSagaData
     {
         public string Marker { get; set; } = "";
+    }
+
+    public sealed class InstallerTestSaga : NServiceBus.Saga<InstallerTestSagaData>,
+        NServiceBus.IAmStartedByMessages<InstallerTestStartMessage>
+    {
+        protected override void ConfigureHowToFindSaga(NServiceBus.SagaPropertyMapper<InstallerTestSagaData> mapper) =>
+            mapper.MapSaga(s => s.Marker).ToMessage<InstallerTestStartMessage>(m => m.Marker);
+
+        public Task Handle(InstallerTestStartMessage message, NServiceBus.IMessageHandlerContext context) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InstallerTestStartMessage : NServiceBus.ICommand
+    {
+        public string Marker { get; set; } = "";
+    }
+
+    public sealed class NotRegisteredSagaData : NServiceBus.ContainSagaData
+    {
     }
 }

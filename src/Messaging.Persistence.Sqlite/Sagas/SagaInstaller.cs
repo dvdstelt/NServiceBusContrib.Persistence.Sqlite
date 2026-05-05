@@ -1,43 +1,23 @@
 namespace Messaging.Persistence.Sqlite.Sagas;
 
-using System.Reflection;
-using NServiceBus;
 using NServiceBus.Installation;
+using NServiceBus.Sagas;
 
-sealed class SagaInstaller(IConnectionFactory connectionFactory, SagaInfoCache sagaInfoCache) : INeedToInstallSomething
+sealed class SagaInstaller(
+    IConnectionFactory connectionFactory,
+    SagaInfoCache sagaInfoCache,
+    SagaMetadataCollection sagaMetadata) : INeedToInstallSomething
 {
     public async Task Install(string identity, CancellationToken cancellationToken = default)
     {
-        var sagaTypes = DiscoverSagaTypes();
         await using var connection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
 
-        foreach (var sagaType in sagaTypes)
+        foreach (var metadata in sagaMetadata)
         {
-            var info = sagaInfoCache.Get(sagaType);
+            var info = sagaInfoCache.Get(metadata.SagaEntityType);
             await using var command = connection.CreateCommand();
             command.CommandText = SchemaScripts.CreateSagaTable(info.TableName);
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    static IEnumerable<Type> DiscoverSagaTypes() =>
-        AppDomain.CurrentDomain.GetAssemblies()
-            .Where(assembly => !assembly.IsDynamic)
-            .SelectMany(SafeGetTypes)
-            .Where(type => typeof(IContainSagaData).IsAssignableFrom(type)
-                           && type is { IsClass: true, IsAbstract: false, ContainsGenericParameters: false }
-                           && type != typeof(ContainSagaData))
-            .Distinct();
-
-    static IEnumerable<Type> SafeGetTypes(Assembly assembly)
-    {
-        try
-        {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex)
-        {
-            return ex.Types.Where(t => t is not null)!;
         }
     }
 }

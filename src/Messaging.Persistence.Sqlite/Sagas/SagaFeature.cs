@@ -19,9 +19,11 @@ sealed class SagaFeature : Feature
         var tablePrefix = SqliteSettings.ResolveTablePrefix(context.Settings);
         var connectionFactory = SqliteSettings.ResolveConnectionFactory(context.Settings);
         var sagaInfoCache = new SagaInfoCache(tablePrefix);
+        var sagaMetadata = context.Settings.Get<SagaMetadataCollection>();
 
         context.Services.TryAddSingleton(connectionFactory);
         context.Services.AddSingleton(sagaInfoCache);
+        context.Services.AddSingleton(sagaMetadata);
         context.Services.AddSingleton<ISagaPersister, SqliteSagaPersister>();
 
         context.AddInstaller<SagaInstaller>();
