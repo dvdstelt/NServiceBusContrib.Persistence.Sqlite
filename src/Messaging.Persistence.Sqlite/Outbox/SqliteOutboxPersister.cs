@@ -47,9 +47,11 @@ sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string 
         var connection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
         try
         {
-            var transaction = (SqliteTransaction)await connection
-                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
-                .ConfigureAwait(false);
+            // BEGIN DEFERRED so multiple outbox transactions can coexist; the unique constraint on
+            // (MessageId, EndpointName) is what enforces dedup, not SQLite's writer serialization.
+            // BeginTransactionAsync(IsolationLevel) in Microsoft.Data.Sqlite maps every isolation
+            // level to BEGIN IMMEDIATE, so we use the sync deferred overload instead.
+            var transaction = connection.BeginTransaction(deferred: true);
             return new SqliteOutboxTransaction(connection, transaction);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

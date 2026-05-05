@@ -27,12 +27,26 @@ sealed class DefaultConnectionFactory(string connectionString) : IConnectionFact
 
     static async Task ApplyPragmas(SqliteConnection connection, CancellationToken cancellationToken)
     {
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            "PRAGMA journal_mode = WAL;" +
+        // journal_mode is database-persistent; set it only when not already WAL. Re-issuing it
+        // unnecessarily on a WAL database has been observed to leave Microsoft.Data.Sqlite in a
+        // state where subsequent BEGIN DEFERRED on a different connection times out with "database is locked".
+        await using (var probe = connection.CreateCommand())
+        {
+            probe.CommandText = "PRAGMA journal_mode;";
+            var current = (string?)await probe.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            if (!string.Equals(current, "wal", StringComparison.OrdinalIgnoreCase))
+            {
+                await using var set = connection.CreateCommand();
+                set.CommandText = "PRAGMA journal_mode = WAL;";
+                await set.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        await using var rest = connection.CreateCommand();
+        rest.CommandText =
             "PRAGMA synchronous = NORMAL;" +
             "PRAGMA foreign_keys = ON;" +
             "PRAGMA busy_timeout = 5000;";
-        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        await rest.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 }
