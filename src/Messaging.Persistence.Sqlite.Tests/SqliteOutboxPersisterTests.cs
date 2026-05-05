@@ -151,6 +151,41 @@ public class SqliteOutboxPersisterTests
         Assert.That(roundTripped.Options["DeliveryConstraint"], Is.EqualTo("NonDurable"));
     }
 
+    [Test]
+    public async Task Store_NonUniqueConstraintViolation_IsNotTranslatedAsDuplicate()
+    {
+        // Recreate the outbox table with an extra CHECK constraint so we can exercise a
+        // non-unique constraint failure. Without the fix, the persister catches
+        // SqliteErrorCode == 19 (the primary SQLITE_CONSTRAINT code) and reports the row as
+        // "already exists" - hiding NOT NULL / CHECK / FK violations behind a misleading message.
+        await using (var conn = await factory.OpenConnection())
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = """
+                DROP TABLE OutboxRecord;
+                CREATE TABLE OutboxRecord (
+                    MessageId           TEXT    NOT NULL CHECK (MessageId NOT LIKE 'X%'),
+                    EndpointName        TEXT    NOT NULL,
+                    Dispatched          INTEGER NOT NULL DEFAULT 0,
+                    DispatchedAt        TEXT    NULL,
+                    OperationsJson      TEXT    NULL,
+                    PersistenceVersion  TEXT    NOT NULL,
+                    PRIMARY KEY (MessageId, EndpointName)
+                ) WITHOUT ROWID;
+                """;
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        var message = new OutboxMessage("X-violates-check", [NewOperation("op", "x")]);
+
+        await using var tx = await persister.BeginTransaction(new ContextBag());
+        var thrown = Assert.CatchAsync(() => persister.Store(message, tx, new ContextBag()));
+
+        Assert.That(thrown, Is.Not.Null);
+        Assert.That(thrown!.Message, Does.Not.Contain("already exists"),
+            "CHECK violations must not be reported as duplicate-key errors.");
+    }
+
     static TransportOperation NewOperation(string messageId, string body) =>
         new(messageId, new DispatchProperties(), System.Text.Encoding.UTF8.GetBytes(body), new Dictionary<string, string>());
 

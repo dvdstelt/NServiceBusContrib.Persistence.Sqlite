@@ -42,7 +42,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
         {
             await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        catch (SqliteException ex) when (SqliteErrors.IsDuplicateKey(ex))
         {
             throw new InvalidOperationException(
                 $"A saga of type '{sagaDataType.Name}' with id '{sagaData.Id}' or correlation '{correlationValue}' already exists.",

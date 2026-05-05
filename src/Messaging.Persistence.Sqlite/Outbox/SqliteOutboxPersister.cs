@@ -98,7 +98,7 @@ sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string 
         {
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        catch (SqliteException ex) when (SqliteErrors.IsDuplicateKey(ex))
         {
             throw new InvalidOperationException(
                 $"An outbox record with id '{message.MessageId}' already exists for endpoint '{endpointName}'.", ex);
