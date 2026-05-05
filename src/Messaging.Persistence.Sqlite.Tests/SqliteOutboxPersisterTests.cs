@@ -152,6 +152,66 @@ public class SqliteOutboxPersisterTests
     }
 
     [Test]
+    public async Task Store_ManyParallelDistinctMessageIds_AllSucceed()
+    {
+        // BEGIN DEFERRED is the persister's central concurrency claim. Parallel writers with
+        // distinct MessageIds must all succeed - only at the actual write does SQLite take the
+        // (one-at-a-time) writer lock, and busy_timeout absorbs the wait.
+        const int parallel = 16;
+
+        var tasks = Enumerable.Range(0, parallel).Select(async i =>
+        {
+            var message = new OutboxMessage($"distinct-{i}", [NewOperation($"op-{i}", "x")]);
+            await using var tx = await persister.BeginTransaction(new ContextBag());
+            await persister.Store(message, tx, new ContextBag());
+            await tx.Commit();
+        }).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        for (var i = 0; i < parallel; i++)
+        {
+            var fetched = await persister.Get($"distinct-{i}", new ContextBag());
+            Assert.That(fetched, Is.Not.Null, $"distinct-{i} should have been stored");
+        }
+    }
+
+    [Test]
+    public async Task Store_ManyParallelSameMessageId_ExactlyOneSucceeds()
+    {
+        // The dedup invariant: when several workers race to store the same MessageId, the
+        // unique constraint on (MessageId, EndpointName) must guarantee exactly one winner.
+        // Losers must surface as InvalidOperationException, not raw SqliteException.
+        const int parallel = 8;
+        const string contestedId = "contested";
+
+        var winners = 0;
+        var failures = new List<Exception>();
+
+        var tasks = Enumerable.Range(0, parallel).Select(async _ =>
+        {
+            try
+            {
+                var message = new OutboxMessage(contestedId, [NewOperation("op", "x")]);
+                await using var tx = await persister.BeginTransaction(new ContextBag());
+                await persister.Store(message, tx, new ContextBag());
+                await tx.Commit();
+                Interlocked.Increment(ref winners);
+            }
+            catch (InvalidOperationException ex)
+            {
+                lock (failures) { failures.Add(ex); }
+            }
+        }).ToArray();
+
+        await Task.WhenAll(tasks);
+
+        Assert.That(winners, Is.EqualTo(1), "exactly one parallel writer must win the dedup race");
+        Assert.That(failures, Has.Count.EqualTo(parallel - 1),
+            "every loser must surface as InvalidOperationException, not a raw SqliteException");
+    }
+
+    [Test]
     public void SetAsDispatched_OnMissingMessage_IsSilentNoOp()
     {
         // The NSB outbox calls SetAsDispatched after successful transport dispatch. If the row

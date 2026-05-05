@@ -185,6 +185,74 @@ public class SqliteSagaPersisterTests
             persister.Update(data, session, new ContextBag()));
     }
 
+    [Test]
+    public async Task Update_TwoConcurrentSessions_ExactlyOneSucceeds()
+    {
+        // Existing concurrency tests run the two sessions sequentially. This one uses a
+        // barrier so both sessions Get the saga (capturing the same Concurrency=1 snapshot)
+        // BEFORE either issues its Update. Optimistic concurrency must detect the conflict and
+        // produce exactly one winner.
+        var initial = new OrderSagaData { Id = Guid.NewGuid(), OrderId = "race", Quantity = 0 };
+        await persister.Save(initial, new SagaCorrelationProperty("OrderId", "race"), session, new ContextBag());
+        await session.CompleteAsync();
+        await session.DisposeAsync();
+
+        var bothFetched = new TaskCompletionSource();
+        var fetchedCount = 0;
+
+        async Task<bool> AttemptUpdate(int newQuantity)
+        {
+            var localSession = new SqliteSynchronizedStorageSession(factory);
+            var ctx = new ContextBag();
+            try
+            {
+                await localSession.Open(ctx);
+                var fetched = await persister.Get<OrderSagaData>(initial.Id, localSession, ctx);
+                if (fetched is null)
+                {
+                    return false;
+                }
+
+                if (Interlocked.Increment(ref fetchedCount) == 2)
+                {
+                    bothFetched.SetResult();
+                }
+                await bothFetched.Task;
+
+                fetched.Quantity = newQuantity;
+                await persister.Update(fetched, localSession, ctx);
+                await localSession.CompleteAsync();
+                return true;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException)
+            {
+                // SQLite may surface SQLITE_BUSY_SNAPSHOT on the loser before the optimistic
+                // check fires; either failure mode is acceptable. The contract is "at most one winner".
+                return false;
+            }
+            finally
+            {
+                await localSession.DisposeAsync();
+            }
+        }
+
+        var taskA = Task.Run(() => AttemptUpdate(11));
+        var taskB = Task.Run(() => AttemptUpdate(22));
+        var results = await Task.WhenAll(taskA, taskB);
+
+        Assert.That(results.Count(r => r), Is.EqualTo(1),
+            "exactly one of the two concurrent updaters must succeed");
+
+        session = new SqliteSynchronizedStorageSession(factory);
+        await session.Open(new ContextBag());
+        var final = await persister.Get<OrderSagaData>(initial.Id, session, new ContextBag());
+        Assert.That(final!.Quantity, Is.AnyOf(11, 22));
+    }
+
     public sealed class OrderSagaData : ContainSagaData
     {
         public string OrderId { get; set; } = "";
