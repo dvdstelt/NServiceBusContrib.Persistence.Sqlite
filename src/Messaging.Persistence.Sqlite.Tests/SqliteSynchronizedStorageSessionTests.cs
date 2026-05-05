@@ -160,4 +160,46 @@ public class SqliteSynchronizedStorageSessionTests
         public void Dispose() { }
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
+
+    [Test]
+    public void Open_BeginTransactionThrows_OwnedConnectionIsDisposed()
+    {
+        // The session calls connectionFactory.OpenConnection then BeginTransaction. If
+        // BeginTransaction throws after the connection has been assigned, the connection
+        // would otherwise leak: ownsConnection is still false at that point so a later
+        // Dispose() does nothing.
+        var poisonedFactory = new ReturnsClosedConnectionFactory();
+        var session = new SqliteSynchronizedStorageSession(poisonedFactory);
+
+        Assert.ThrowsAsync<InvalidOperationException>(() => session.Open(new ContextBag()));
+        Assert.That(poisonedFactory.LastConnection, Is.Not.Null,
+            "factory should have produced a connection before BeginTransaction was attempted");
+        Assert.That(poisonedFactory.LastConnection!.DisposeCalls, Is.GreaterThan(0),
+            "the connection must be disposed after BeginTransaction throws");
+    }
+
+    sealed class ReturnsClosedConnectionFactory : IConnectionFactory
+    {
+        public TrackedSqliteConnection? LastConnection { get; private set; }
+
+        public ValueTask<SqliteConnection> OpenConnection(CancellationToken cancellationToken = default)
+        {
+            // Deliberately not opened: BeginTransaction on a closed connection throws
+            // InvalidOperationException, simulating a transient connection failure between
+            // OpenConnection() returning and BeginTransaction running.
+            LastConnection = new TrackedSqliteConnection("Data Source=:memory:");
+            return ValueTask.FromResult<SqliteConnection>(LastConnection);
+        }
+    }
+
+    sealed class TrackedSqliteConnection(string connectionString) : SqliteConnection(connectionString)
+    {
+        public int DisposeCalls { get; private set; }
+
+        protected override void Dispose(bool disposing)
+        {
+            DisposeCalls++;
+            base.Dispose(disposing);
+        }
+    }
 }

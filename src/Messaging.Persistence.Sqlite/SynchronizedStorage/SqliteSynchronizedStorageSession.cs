@@ -43,14 +43,23 @@ sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFacto
             return;
         }
 
-        connection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
-        // BEGIN DEFERRED so two sessions can read concurrently. Optimistic-concurrency conflicts are
-        // detected by the WHERE-clause version check on saga UPDATE/DELETE.
-        // Note: BeginTransactionAsync(IsolationLevel.ReadCommitted) maps to BEGIN IMMEDIATE in
-        // Microsoft.Data.Sqlite (it reassigns ReadCommitted to Serializable internally), so we use
-        // the sync BeginTransaction(deferred: true) overload instead. Sync is fine here since SQLite
-        // BEGIN does no I/O.
-        transaction = connection.BeginTransaction(deferred: true);
+        var openedConnection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // BEGIN DEFERRED so two sessions can read concurrently. Optimistic-concurrency conflicts
+            // are detected by the WHERE-clause version check on saga UPDATE/DELETE.
+            // Note: BeginTransactionAsync(IsolationLevel.ReadCommitted) maps to BEGIN IMMEDIATE in
+            // Microsoft.Data.Sqlite (it reassigns ReadCommitted to Serializable internally), so we
+            // use the sync BeginTransaction(deferred: true) overload instead. Sync is fine here
+            // since SQLite BEGIN does no I/O.
+            transaction = openedConnection.BeginTransaction(deferred: true);
+        }
+        catch
+        {
+            await openedConnection.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+        connection = openedConnection;
         ownsConnection = true;
     }
 
