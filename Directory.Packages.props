@@ -9,6 +9,7 @@
     <PackageVersion Include="NServiceBus" Version="10.1.4" />
     <PackageVersion Include="NServiceBus.AcceptanceTesting" Version="10.1.4" />
     <PackageVersion Include="NServiceBus.AcceptanceTests.Sources" Version="10.1.4" />
+    <PackageVersion Include="NServiceBus.PersistenceTests.Sources" Version="10.1.4" />
     <PackageVersion Include="NServiceBus.TransactionalSession" Version="4.0.2" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.7" />
     <PackageVersion Include="Particular.Analyzers" Version="1.8.0" />
