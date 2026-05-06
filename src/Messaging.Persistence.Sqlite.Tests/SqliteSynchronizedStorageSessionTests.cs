@@ -174,6 +174,73 @@ public class SqliteSynchronizedStorageSessionTests
     }
 
     [Test]
+    public async Task Open_CalledTwice_IsIdempotent()
+    {
+        // NSB's pipeline shouldn't call Open twice, but a user-facing caller composing
+        // transactional sessions might. The second call must not replace the connection
+        // or open a second transaction.
+        await using var s = new SqliteSynchronizedStorageSession(factory);
+        await s.Open(new ContextBag());
+        var connectionAfterFirstOpen = s.Connection;
+        var transactionAfterFirstOpen = s.Transaction;
+
+        await s.Open(new ContextBag());
+
+        Assert.That(s.Connection, Is.SameAs(connectionAfterFirstOpen),
+            "the second Open must not replace the connection");
+        Assert.That(s.Transaction, Is.SameAs(transactionAfterFirstOpen),
+            "the second Open must not replace the transaction");
+    }
+
+    [Test]
+    public async Task CompleteAsync_AfterDispose_IsSilentNoOp()
+    {
+        var s = new SqliteSynchronizedStorageSession(factory);
+        await s.Open(new ContextBag());
+        await s.DisposeAsync();
+
+        Assert.DoesNotThrowAsync(() => s.CompleteAsync(),
+            "CompleteAsync after Dispose must not throw - the session is already in the Closed state");
+    }
+
+    [Test]
+    public async Task DisposeAsync_CalledTwice_DoesNotThrow()
+    {
+        var s = new SqliteSynchronizedStorageSession(factory);
+        await s.Open(new ContextBag());
+        await s.DisposeAsync();
+
+        Assert.DoesNotThrowAsync(async () => await s.DisposeAsync());
+    }
+
+    [Test]
+    public async Task CompleteAsync_OnBorrowedSession_DoesNotCommitTheBorrowedTransaction()
+    {
+        // The owner of a borrowed transaction (the outbox) is responsible for committing it.
+        // If CompleteAsync committed early, two parties would race to commit and the outbox
+        // could not roll back on a downstream failure.
+        var conn = await factory.OpenConnection();
+        var tx = (SqliteTransaction)await conn.BeginTransactionAsync();
+        try
+        {
+            using var outboxTx = new SqliteOutboxTransaction(conn, tx);
+
+            var s = new SqliteSynchronizedStorageSession(factory);
+            await s.TryOpen(outboxTx, new ContextBag());
+            await s.CompleteAsync();
+            await s.DisposeAsync();
+
+            // The transaction should still be live - we can roll it back.
+            Assert.DoesNotThrow(() => tx.Rollback());
+        }
+        finally
+        {
+            tx.Dispose();
+            conn.Dispose();
+        }
+    }
+
+    [Test]
     public void Open_BeginTransactionThrows_OwnedConnectionIsDisposed()
     {
         // The session calls connectionFactory.OpenConnection then BeginTransaction. If
