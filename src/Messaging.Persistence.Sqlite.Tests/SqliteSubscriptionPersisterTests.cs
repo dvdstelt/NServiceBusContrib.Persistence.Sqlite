@@ -25,7 +25,7 @@ public class SqliteSubscriptionPersisterTests
         cmd.CommandText = SchemaScripts.CreateSubscriptionTable(tablePrefix: "");
         await cmd.ExecuteNonQueryAsync();
 
-        persister = new SqliteSubscriptionPersister(factory, tablePrefix: "");
+        persister = new SqliteSubscriptionPersister(factory, tablePrefix: TablePrefix.Empty);
     }
 
     [TearDown]

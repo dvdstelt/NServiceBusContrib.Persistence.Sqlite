@@ -25,7 +25,7 @@ public class SqliteOutboxPersisterTests
         cmd.CommandText = SchemaScripts.CreateOutboxTable(tablePrefix: "");
         await cmd.ExecuteNonQueryAsync();
 
-        persister = new SqliteOutboxPersister(factory, tablePrefix: "", endpointName: "test-endpoint");
+        persister = new SqliteOutboxPersister(factory, tablePrefix: TablePrefix.Empty, endpointName: "test-endpoint");
     }
 
     [TearDown]

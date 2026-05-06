@@ -7,7 +7,7 @@ using NServiceBus.Logging;
 
 sealed class OutboxCleaner(
     IConnectionFactory connectionFactory,
-    string tablePrefix,
+    TablePrefix tablePrefix,
     string endpointName,
     TimeSpan retentionPeriod,
     TimeSpan cleanupFrequency) : FeatureStartupTask
@@ -70,7 +70,7 @@ sealed class OutboxCleaner(
     /// </summary>
     internal static async Task TryCleanupOnceAsync(
         IConnectionFactory connectionFactory,
-        string tablePrefix,
+        TablePrefix tablePrefix,
         string endpointName,
         TimeSpan retentionPeriod,
         int batchSize,
@@ -101,7 +101,7 @@ sealed class OutboxCleaner(
 
     internal static async Task<int> CleanupOnce(
         IConnectionFactory connectionFactory,
-        string tablePrefix,
+        TablePrefix tablePrefix,
         string endpointName,
         TimeSpan retentionPeriod,
         int batchSize,

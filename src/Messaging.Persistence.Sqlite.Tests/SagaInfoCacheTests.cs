@@ -13,7 +13,7 @@ public class SagaInfoCacheTests
         // Generic type names contain a backtick (e.g. "MyType`1"). Concatenating that into
         // unquoted SQL would produce a parse error at install time, far away from the cause.
         // Reject up-front with an actionable message.
-        var cache = new SagaInfoCache(tablePrefix: "");
+        var cache = new SagaInfoCache(tablePrefix: TablePrefix.Empty);
 
         var ex = Assert.Throws<ArgumentException>(() => cache.Get(typeof(GenericSagaData<int>)));
 
@@ -26,7 +26,7 @@ public class SagaInfoCacheTests
     [Test]
     public void Get_RegularSagaType_ReturnsExpectedTableName()
     {
-        var cache = new SagaInfoCache(tablePrefix: "Foo_");
+        var cache = new SagaInfoCache(tablePrefix: TablePrefix.Create("Foo_"));
 
         var info = cache.Get(typeof(RegularSagaData));
 

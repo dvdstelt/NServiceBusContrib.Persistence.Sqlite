@@ -42,7 +42,7 @@ public class OutboxCleanerTests
         await Insert("not-dispatched", dispatched: false, dispatchedAt: null);
 
         var deleted = await OutboxCleaner.CleanupOnce(
-            factory, tablePrefix: "", endpointName: TestEndpoint,
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7),
             batchSize: 1000, cancellationToken: CancellationToken.None);
 
@@ -63,7 +63,7 @@ public class OutboxCleanerTests
         }
 
         var deleted = await OutboxCleaner.CleanupOnce(
-            factory, tablePrefix: "", endpointName: TestEndpoint,
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7),
             batchSize: 2, cancellationToken: CancellationToken.None);
 
@@ -78,7 +78,7 @@ public class OutboxCleanerTests
         await Insert("b", dispatched: false, dispatchedAt: null);
 
         var deleted = await OutboxCleaner.CleanupOnce(
-            factory, tablePrefix: "", endpointName: TestEndpoint,
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7),
             batchSize: 1000, cancellationToken: CancellationToken.None);
 
@@ -99,7 +99,7 @@ public class OutboxCleanerTests
         await Insert("stale-dispatched", dispatched: true, dispatchedAt: stale);
 
         var outboxPersister = new Messaging.Persistence.Sqlite.Outbox.SqliteOutboxPersister(
-            factory, tablePrefix: "", endpointName: TestEndpoint);
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint);
         var pendingMessage = new NServiceBus.Outbox.OutboxMessage(
             "in-flight",
             [new NServiceBus.Outbox.TransportOperation(
@@ -111,7 +111,7 @@ public class OutboxCleanerTests
         await outboxPersister.Store(pendingMessage, outboxTx, new NServiceBus.Extensibility.ContextBag());
 
         Assert.DoesNotThrowAsync(() => OutboxCleaner.TryCleanupOnceAsync(
-            factory, tablePrefix: "", endpointName: TestEndpoint,
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7),
             batchSize: 100, cancellationToken: CancellationToken.None));
 
@@ -119,7 +119,7 @@ public class OutboxCleanerTests
 
         // After contention clears, cleanup must succeed on the next attempt.
         var deleted = await OutboxCleaner.CleanupOnce(
-            factory, tablePrefix: "", endpointName: TestEndpoint,
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7),
             batchSize: 100, cancellationToken: CancellationToken.None);
 
@@ -135,7 +135,7 @@ public class OutboxCleanerTests
         await Insert("shared-id", dispatched: true, dispatchedAt: old, endpointName: "other-endpoint");
 
         var deleted = await OutboxCleaner.CleanupOnce(
-            factory, tablePrefix: "", endpointName: TestEndpoint,
+            factory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7),
             batchSize: 1000, cancellationToken: CancellationToken.None);
 
@@ -152,7 +152,7 @@ public class OutboxCleanerTests
             () => throw new SqliteException("simulated transient failure", 5));
 
         Assert.DoesNotThrowAsync(() => OutboxCleaner.TryCleanupOnceAsync(
-            poisonedFactory, tablePrefix: "", endpointName: TestEndpoint,
+            poisonedFactory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7), batchSize: 100,
             cancellationToken: CancellationToken.None));
     }
@@ -179,7 +179,7 @@ public class OutboxCleanerTests
 
     static Task RunCleanupOnce(IConnectionFactory poisonedFactory) =>
         OutboxCleaner.TryCleanupOnceAsync(
-            poisonedFactory, tablePrefix: "", endpointName: TestEndpoint,
+            poisonedFactory, tablePrefix: TablePrefix.Empty, endpointName: TestEndpoint,
             retentionPeriod: TimeSpan.FromDays(7), batchSize: 100,
             cancellationToken: CancellationToken.None);
 

@@ -6,7 +6,7 @@ using Microsoft.Data.Sqlite;
 using NServiceBus.Extensibility;
 using NServiceBus.Outbox;
 
-sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, string tablePrefix, string endpointName) : IOutboxStorage
+sealed class SqliteOutboxPersister(IConnectionFactory connectionFactory, TablePrefix tablePrefix, string endpointName) : IOutboxStorage
 {
     public const string PersistenceVersion = "1";
 

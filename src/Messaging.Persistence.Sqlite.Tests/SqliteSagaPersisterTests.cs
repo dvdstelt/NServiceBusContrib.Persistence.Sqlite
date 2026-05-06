@@ -28,7 +28,7 @@ public class SqliteSagaPersisterTests
             await cmd.ExecuteNonQueryAsync();
         }
 
-        persister = new SqliteSagaPersister(new SagaInfoCache(tablePrefix: ""));
+        persister = new SqliteSagaPersister(new SagaInfoCache(tablePrefix: TablePrefix.Empty));
         session = new SqliteSynchronizedStorageSession(factory);
         await session.Open(new ContextBag());
     }

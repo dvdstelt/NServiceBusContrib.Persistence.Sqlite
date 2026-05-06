@@ -3,7 +3,7 @@ namespace Messaging.Persistence.Sqlite.Sagas;
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
-sealed class SagaInfoCache(string tablePrefix)
+sealed class SagaInfoCache(TablePrefix tablePrefix)
 {
     static readonly Regex IdentifierPattern = new("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);
 

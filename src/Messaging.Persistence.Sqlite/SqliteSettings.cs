@@ -24,8 +24,10 @@ static class SqliteSettings
             "Call .ConnectionString(...) or .ConnectionFactory(...) on the persistence configuration.");
     }
 
-    public static string ResolveTablePrefix(IReadOnlySettings settings) =>
-        settings.TryGet<string>(SettingsKeys.TablePrefix, out var prefix) ? prefix : string.Empty;
+    public static TablePrefix ResolveTablePrefix(IReadOnlySettings settings) =>
+        settings.TryGet<string>(SettingsKeys.TablePrefix, out var prefix)
+            ? TablePrefix.Create(prefix)
+            : TablePrefix.Empty;
 
     public static TimeSpan ResolveOutboxRetention(IReadOnlySettings settings) =>
         settings.TryGet<TimeSpan>(SettingsKeys.OutboxRetentionPeriod, out var d) ? d : DefaultOutboxRetention;

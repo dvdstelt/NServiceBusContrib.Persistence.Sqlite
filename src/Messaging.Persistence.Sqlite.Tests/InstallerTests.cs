@@ -69,7 +69,7 @@ public class InstallerTests
         // The installer must build tables for sagas registered in SagaMetadataCollection,
         // not every IContainSagaData type the assembly scanner can find. Otherwise unrelated
         // sagas in referenced libraries get tables they will never use.
-        var cache = new SagaInfoCache(tablePrefix: "");
+        var cache = new SagaInfoCache(tablePrefix: TablePrefix.Empty);
         var metadata = new NServiceBus.Sagas.SagaMetadataCollection();
         metadata.AddRange(NServiceBus.Sagas.SagaMetadata.CreateMany([typeof(InstallerTestSaga)]));
 

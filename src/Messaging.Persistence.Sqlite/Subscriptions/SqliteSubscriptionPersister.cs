@@ -4,7 +4,7 @@ using NServiceBus.Extensibility;
 using NServiceBus.Unicast.Subscriptions;
 using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
 
-sealed class SqliteSubscriptionPersister(IConnectionFactory connectionFactory, string tablePrefix) : ISubscriptionStorage
+sealed class SqliteSubscriptionPersister(IConnectionFactory connectionFactory, TablePrefix tablePrefix) : ISubscriptionStorage
 {
     public const string PersistenceVersion = "1";
 

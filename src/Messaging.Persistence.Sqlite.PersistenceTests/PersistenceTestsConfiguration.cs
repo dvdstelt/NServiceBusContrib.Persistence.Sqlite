@@ -34,7 +34,7 @@ public partial class PersistenceTestsConfiguration
         dbPath = Path.Combine(Path.GetTempPath(), $"messaging-sqlite-persistencetests-{Guid.NewGuid():N}.db");
         factory = new DefaultConnectionFactory($"Data Source={dbPath}");
 
-        var sagaInfoCache = new SagaInfoCache(tablePrefix: "");
+        var sagaInfoCache = new SagaInfoCache(tablePrefix: TablePrefix.Empty);
 
         await using (var connection = await factory.OpenConnection(cancellationToken).ConfigureAwait(false))
         {
@@ -48,7 +48,7 @@ public partial class PersistenceTestsConfiguration
         }
 
         SagaStorage = new SqliteSagaPersister(sagaInfoCache);
-        OutboxStorage = new SqliteOutboxPersister(factory, tablePrefix: "", endpointName: "PersistenceTests");
+        OutboxStorage = new SqliteOutboxPersister(factory, tablePrefix: TablePrefix.Empty, endpointName: "PersistenceTests");
         CreateStorageSession = () => new SqliteSynchronizedStorageSession(factory);
     }
 

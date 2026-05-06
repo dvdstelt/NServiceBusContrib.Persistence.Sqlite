@@ -1,6 +1,5 @@
 namespace Messaging.Persistence.Sqlite;
 
-using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using NServiceBus;
 using NServiceBus.Configuration.AdvancedExtensibility;
@@ -37,22 +36,18 @@ public static class SqlitePersistenceConfig
     }
 
     /// <summary>
-    /// Sets a prefix applied to every table created by the persister.
-    /// Only ASCII letters, digits, and underscores are allowed.
+    /// Sets a prefix applied to every table created by the persister. Must be empty or start
+    /// with an ASCII letter followed by letters, digits, or underscores.
     /// </summary>
     public static PersistenceExtensions<SqlitePersistence> TablePrefix(
         this PersistenceExtensions<SqlitePersistence> persistence,
         string tablePrefix)
     {
         ArgumentNullException.ThrowIfNull(persistence);
-        ArgumentNullException.ThrowIfNull(tablePrefix);
-        if (!TablePrefixPattern.IsMatch(tablePrefix))
-        {
-            throw new ArgumentException(
-                "Table prefix must contain only ASCII letters, digits, and underscores.",
-                nameof(tablePrefix));
-        }
-        persistence.GetSettings().Set(SettingsKeys.TablePrefix, tablePrefix);
+        // Validates the prefix; we still store it as a string in settings since SettingsHolder
+        // serialises by type and the internal struct isn't worth the friction there.
+        var validated = Sqlite.TablePrefix.Create(tablePrefix);
+        persistence.GetSettings().Set(SettingsKeys.TablePrefix, validated.Value);
         return persistence;
     }
 
@@ -65,5 +60,4 @@ public static class SqlitePersistenceConfig
         return new OutboxConfiguration(persistence.GetSettings());
     }
 
-    static readonly Regex TablePrefixPattern = new("^[A-Za-z0-9_]*$", RegexOptions.Compiled);
 }
