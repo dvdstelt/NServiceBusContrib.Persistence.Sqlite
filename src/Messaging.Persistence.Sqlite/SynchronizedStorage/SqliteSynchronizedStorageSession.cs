@@ -10,16 +10,11 @@ using NServiceBus.Transport;
 sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFactory)
     : ICompletableSynchronizedStorageSession, ISqliteStorageSession
 {
-    SqliteConnection? connection;
-    SqliteTransaction? transaction;
-    bool ownsConnection;
-    bool committed;
+    State state = State.Closed.Instance;
 
-    public SqliteConnection Connection =>
-        connection ?? throw new InvalidOperationException("The synchronized storage session has not been opened.");
+    public SqliteConnection Connection => state.GetConnectionOrThrow();
 
-    public SqliteTransaction Transaction =>
-        transaction ?? throw new InvalidOperationException("The synchronized storage session has not been opened.");
+    public SqliteTransaction Transaction => state.GetTransactionOrThrow();
 
     public SqliteCommand CreateCommand()
     {
@@ -32,9 +27,7 @@ sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFacto
     {
         if (outboxTransaction is SqliteOutboxTransaction sqliteOutbox)
         {
-            connection = sqliteOutbox.Connection;
-            transaction = sqliteOutbox.Transaction;
-            ownsConnection = false;
+            state = new State.Borrowed(sqliteOutbox.Connection, sqliteOutbox.Transaction);
             return new ValueTask<bool>(true);
         }
         return new ValueTask<bool>(false);
@@ -45,12 +38,13 @@ sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFacto
 
     public async Task Open(ContextBag contextBag, CancellationToken cancellationToken = default)
     {
-        if (connection is not null)
+        if (state is not State.Closed)
         {
             return;
         }
 
         var openedConnection = await connectionFactory.OpenConnection(cancellationToken).ConfigureAwait(false);
+        SqliteTransaction openedTransaction;
         try
         {
             // BEGIN DEFERRED so two sessions can read concurrently. Optimistic-concurrency conflicts
@@ -59,55 +53,74 @@ sealed class SqliteSynchronizedStorageSession(IConnectionFactory connectionFacto
             // Microsoft.Data.Sqlite (it reassigns ReadCommitted to Serializable internally), so we
             // use the sync BeginTransaction(deferred: true) overload instead. Sync is fine here
             // since SQLite BEGIN does no I/O.
-            transaction = openedConnection.BeginTransaction(deferred: true);
+            openedTransaction = openedConnection.BeginTransaction(deferred: true);
         }
         catch
         {
             await openedConnection.DisposeAsync().ConfigureAwait(false);
             throw;
         }
-        connection = openedConnection;
-        ownsConnection = true;
+        state = new State.Owned(openedConnection, openedTransaction, Committed: false);
     }
 
     public async Task CompleteAsync(CancellationToken cancellationToken = default)
     {
-        if (committed || !ownsConnection || transaction is null)
+        if (state is not State.Owned { Committed: false } owned)
         {
             return;
         }
 
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        committed = true;
+        await owned.Transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        state = owned with { Committed = true };
     }
 
     public void Dispose()
     {
-        if (ownsConnection)
+        if (state is State.Owned owned)
         {
-            transaction?.Dispose();
-            connection?.Dispose();
+            owned.Transaction.Dispose();
+            owned.Connection.Dispose();
         }
-        transaction = null;
-        connection = null;
+        state = State.Closed.Instance;
     }
 
 #pragma warning disable PS0018 // CancellationToken cannot be added to the IAsyncDisposable.DisposeAsync contract
     public async ValueTask DisposeAsync()
 #pragma warning restore PS0018
     {
-        if (ownsConnection)
+        if (state is State.Owned owned)
         {
-            if (transaction is not null)
-            {
-                await transaction.DisposeAsync().ConfigureAwait(false);
-            }
-            if (connection is not null)
-            {
-                await connection.DisposeAsync().ConfigureAwait(false);
-            }
+            await owned.Transaction.DisposeAsync().ConfigureAwait(false);
+            await owned.Connection.DisposeAsync().ConfigureAwait(false);
         }
-        transaction = null;
-        connection = null;
+        state = State.Closed.Instance;
+    }
+
+    abstract record State
+    {
+        public abstract SqliteConnection GetConnectionOrThrow();
+        public abstract SqliteTransaction GetTransactionOrThrow();
+
+        public sealed record Closed : State
+        {
+            public static readonly Closed Instance = new();
+
+            public override SqliteConnection GetConnectionOrThrow() =>
+                throw new InvalidOperationException("The synchronized storage session has not been opened.");
+            public override SqliteTransaction GetTransactionOrThrow() =>
+                throw new InvalidOperationException("The synchronized storage session has not been opened.");
+        }
+
+        public sealed record Borrowed(SqliteConnection Connection, SqliteTransaction Transaction) : State
+        {
+            public override SqliteConnection GetConnectionOrThrow() => Connection;
+            public override SqliteTransaction GetTransactionOrThrow() => Transaction;
+        }
+
+        public sealed record Owned(SqliteConnection Connection, SqliteTransaction Transaction, bool Committed) : State
+        {
+            public override SqliteConnection GetConnectionOrThrow() => Connection;
+            public override SqliteTransaction GetTransactionOrThrow() => Transaction;
+        }
     }
 }
