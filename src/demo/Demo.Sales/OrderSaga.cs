@@ -27,7 +27,13 @@ public class OrderSaga :
         Data.Amount = message.Amount;
         Console.WriteLine($"[Sales] PlaceOrder received: {message.OrderId} ({message.Amount:C}) - saga started");
 
-        await context.Reply(new OrderAccepted { OrderId = message.OrderId });
+        // Only reply when the sender supplied a reply address. Demo.TxClient is send-only,
+        // so its messages arrive without one and Reply would throw.
+        if (context.MessageHeaders.ContainsKey(Headers.ReplyToAddress))
+        {
+            await context.Reply(new OrderAccepted { OrderId = message.OrderId });
+        }
+
         await context.Publish(new OrderPlaced { OrderId = message.OrderId });
     }
 
