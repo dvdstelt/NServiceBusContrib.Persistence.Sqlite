@@ -10,6 +10,7 @@ endpointConfiguration.UseSerialization<SystemJsonSerializer>();
 endpointConfiguration.UseTransport(new LearningTransport
 {
     StorageDirectory = Path.Combine(dataDir, "transport"),
+    TransportTransactionMode = TransportTransactionMode.ReceiveOnly,
 });
 
 var persistence = endpointConfiguration.UsePersistence<SqlitePersistence>();

@@ -23,6 +23,7 @@ endpointConfiguration.UseSerialization<SystemJsonSerializer>();
 var transport = endpointConfiguration.UseTransport(new LearningTransport
 {
     StorageDirectory = Path.Combine(dataDir, "transport"),
+    TransportTransactionMode = TransportTransactionMode.ReceiveOnly,
 });
 transport.RouteToEndpoint(typeof(PlaceOrder), ProcessorEndpointName);
 
