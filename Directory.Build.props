@@ -17,8 +17,8 @@
     <Authors>dvdstelt</Authors>
     <Company>dvdstelt</Company>
     <Copyright>Copyright (c) dvdstelt and contributors</Copyright>
-    <PackageProjectUrl>https://github.com/dvdstelt/Messaging.Persistence.Sqlite</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/dvdstelt/Messaging.Persistence.Sqlite</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/dvdstelt/NServiceBusContrib.Persistence.Sqlite</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dvdstelt/NServiceBusContrib.Persistence.Sqlite</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageReadmeFile>Package-README.md</PackageReadmeFile>
