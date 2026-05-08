@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Demo.Shipping</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NServiceBus" Version="10.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Demo.Messages\Demo.Messages.csproj" />
+    <ProjectReference Include="..\..\Messaging.Persistence.Sqlite\Messaging.Persistence.Sqlite.csproj" />
+  </ItemGroup>
+</Project>

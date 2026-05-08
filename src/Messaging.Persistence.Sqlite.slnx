@@ -5,4 +5,11 @@
   <Project Path="Messaging.Persistence.Sqlite.PersistenceTests/Messaging.Persistence.Sqlite.PersistenceTests.csproj" />
   <Project Path="Messaging.Persistence.Sqlite.AcceptanceTests/Messaging.Persistence.Sqlite.AcceptanceTests.csproj" />
   <Project Path="Messaging.Persistence.Sqlite.TransactionalSession.AcceptanceTests/Messaging.Persistence.Sqlite.TransactionalSession.AcceptanceTests.csproj" />
+  <Folder Name="/demo/">
+    <Project Path="demo/Demo.Messages/Demo.Messages.csproj" />
+    <Project Path="demo/Demo.Sales/Demo.Sales.csproj" />
+    <Project Path="demo/Demo.Shipping/Demo.Shipping.csproj" />
+    <Project Path="demo/Demo.Sender/Demo.Sender.csproj" />
+    <Project Path="demo/Demo.TxClient/Demo.TxClient.csproj" />
+  </Folder>
 </Solution>
