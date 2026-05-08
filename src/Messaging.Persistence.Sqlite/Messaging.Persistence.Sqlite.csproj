@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PackageId>NServiceBusContrib.Persistence.Sqlite</PackageId>
     <Description>SQLite persistence for NServiceBus. Community persister, not affiliated with Particular Software.</Description>
     <PackageTags>nservicebus;sqlite;persistence;outbox;saga;subscriptions</PackageTags>
     <IsPackable>true</IsPackable>

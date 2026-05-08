@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Transactional Session support for Messaging.Persistence.Sqlite. Community persister, not affiliated with Particular Software.</Description>
+    <PackageId>NServiceBusContrib.Persistence.Sqlite.TransactionalSession</PackageId>
+    <Description>Transactional Session support for NServiceBusContrib.Persistence.Sqlite. Community persister, not affiliated with Particular Software.</Description>
     <PackageTags>nservicebus;sqlite;persistence;transactionalsession</PackageTags>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
