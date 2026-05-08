@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Messaging.Persistence.Sqlite/Messaging.Persistence.Sqlite.csproj" />
+  <Project Path="Messaging.Persistence.Sqlite.TransactionalSession/Messaging.Persistence.Sqlite.TransactionalSession.csproj" />
+  <Project Path="Messaging.Persistence.Sqlite.Tests/Messaging.Persistence.Sqlite.Tests.csproj" />
+  <Project Path="Messaging.Persistence.Sqlite.PersistenceTests/Messaging.Persistence.Sqlite.PersistenceTests.csproj" />
+  <Project Path="Messaging.Persistence.Sqlite.AcceptanceTests/Messaging.Persistence.Sqlite.AcceptanceTests.csproj" />
+  <Project Path="Messaging.Persistence.Sqlite.TransactionalSession.AcceptanceTests/Messaging.Persistence.Sqlite.TransactionalSession.AcceptanceTests.csproj" />
+</Solution>
