@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>NServiceBusContrib.Persistence.Sqlite.Testing</PackageId>
+    <Description>Testing helpers for NServiceBusContrib.Persistence.Sqlite. Community persister, not affiliated with Particular Software.</Description>
+    <PackageTags>nservicebus;sqlite;persistence;testing</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Messaging.Persistence.Sqlite\Messaging.Persistence.Sqlite.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\Package-README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

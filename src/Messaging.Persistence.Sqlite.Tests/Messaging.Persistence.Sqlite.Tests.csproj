@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Messaging.Persistence.Sqlite\Messaging.Persistence.Sqlite.csproj" />
+    <ProjectReference Include="..\Messaging.Persistence.Sqlite.Testing\Messaging.Persistence.Sqlite.Testing.csproj" />
   </ItemGroup>
 
 </Project>

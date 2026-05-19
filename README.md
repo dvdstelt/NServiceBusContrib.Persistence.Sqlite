@@ -27,10 +27,11 @@ Requires the .NET 10 SDK.
 
 ## NuGet packages
 
-This repository publishes two packages:
+This repository publishes three packages:
 
 - `NServiceBusContrib.Persistence.Sqlite` - Outbox, Saga, Subscription, and synchronized storage session support.
 - `NServiceBusContrib.Persistence.Sqlite.TransactionalSession` - TransactionalSession support; depends on the package above.
+- `NServiceBusContrib.Persistence.Sqlite.Testing` - test doubles for unit-testing handlers that use the synchronized storage session.
 
 ### Local pack
 
