@@ -10,7 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Demo.Messages\Demo.Messages.csproj" />
-    <ProjectReference Include="..\..\Messaging.Persistence.Sqlite\Messaging.Persistence.Sqlite.csproj" />
-    <ProjectReference Include="..\..\Messaging.Persistence.Sqlite.TransactionalSession\Messaging.Persistence.Sqlite.TransactionalSession.csproj" />
+    <ProjectReference Include="..\..\NServiceBusContrib.Persistence.Sqlite\NServiceBusContrib.Persistence.Sqlite.csproj" />
+    <ProjectReference Include="..\..\NServiceBusContrib.Persistence.Sqlite.TransactionalSession\NServiceBusContrib.Persistence.Sqlite.TransactionalSession.csproj" />
   </ItemGroup>
 </Project>

@@ -1,14 +1,14 @@
-# Messaging.Persistence.Sqlite: Implementation Plan
+# NServiceBusContrib.Persistence.Sqlite: Implementation Plan
 
 ## Overview
 
-Build a new persister, `Messaging.Persistence.Sqlite`, for NServiceBus 10. It targets file-based and in-memory SQLite databases via `Microsoft.Data.Sqlite`. The package name avoids the `NServiceBus.*` and `Particular.*` prefixes, which are trademarked and reserved for Particular Software. The README and NuGet description identify it as a community persister for NServiceBus (nominative use). The persister supports:
+Build a new persister, `NServiceBusContrib.Persistence.Sqlite`, for NServiceBus 10. It targets file-based and in-memory SQLite databases via `Microsoft.Data.Sqlite`. The package name avoids the `NServiceBus.*` and `Particular.*` prefixes, which are trademarked and reserved for Particular Software. The README and NuGet description identify it as a community persister for NServiceBus (nominative use). The persister supports:
 
 - Outbox storage
 - Saga storage (optimistic concurrency)
 - Subscription storage
 - Synchronized storage session (sharing one `SqliteConnection` and `SqliteTransaction` between outbox, sagas, subscriptions, and user handler writes)
-- TransactionalSession (separate package `Messaging.Persistence.Sqlite.TransactionalSession`)
+- TransactionalSession (separate package `NServiceBusContrib.Persistence.Sqlite.TransactionalSession`)
 
 The companion document, `commonalities-and-best-practices.md`, captures the cross-cutting patterns this plan relies on.
 
@@ -32,14 +32,14 @@ The plan recommends a **standalone persister** for these reasons:
 1. SQLite ships in-process. Connection lifetime, pooling, and journal-mode handling are quite different from the server-based dialects, particularly around `:memory:` databases used in tests.
 2. SQLite has no row-level locking. Trying to fit it into the existing pessimistic-locking codepaths in `NServiceBus.Persistence.Sql` would add conditional branches throughout the dialect.
 3. The packaging story (single NuGet, no driver dependency tree) is cleaner standalone.
-4. The codebase here (`Messaging.Persistence.Sqlite`) is already structured as a separate persister.
+4. The codebase here (`NServiceBusContrib.Persistence.Sqlite`) is already structured as a separate persister.
 
 Alternative (deferred): once v1 is shipped, evaluate folding it back into `NServiceBus.Persistence.Sql` as a fifth dialect if that proves valuable.
 
 ## High-Level Architecture
 
 ```
-Messaging.Persistence.Sqlite (main package)
+NServiceBusContrib.Persistence.Sqlite (main package)
   Configuration:
     SqlitePersistence : PersistenceDefinition
     SqlitePersistenceConfig (static config extensions)
@@ -75,7 +75,7 @@ Messaging.Persistence.Sqlite (main package)
     DefaultConnectionFactory (uses configured connection string)
     ConnectionScope (Open + apply pragmas, e.g. journal_mode=WAL, foreign_keys=ON)
 
-Messaging.Persistence.Sqlite.TransactionalSession (sibling package)
+NServiceBusContrib.Persistence.Sqlite.TransactionalSession (sibling package)
   SqliteTransactionalSessionExtensions.EnableTransactionalSession
   SqliteTransactionalSession : Feature
   Control message customizations
@@ -179,11 +179,11 @@ Each phase ends in a buildable, testable state. Steps are ordered so unit tests 
 
 ### Phase 1: Repository Scaffolding
 
-- [ ] Add `src/Messaging.Persistence.Sqlite/Messaging.Persistence.Sqlite.csproj` targeting `net10.0`, with `Microsoft.Data.Sqlite` and `NServiceBus` package references plus `Particular.Analyzers`.
-- [ ] Add `src/Messaging.Persistence.Sqlite.Tests/` (unit tests, NUnit).
-- [ ] Add `src/Messaging.Persistence.Sqlite.PersistenceTests/` referencing the NServiceBus persistence test pack.
-- [ ] Add `src/Messaging.Persistence.Sqlite.AcceptanceTests/` referencing `NServiceBus.AcceptanceTests` shared sources.
-- [ ] Add `src/Messaging.Persistence.Sqlite.TransactionalSession/` and matching `*.AcceptanceTests`.
+- [ ] Add `src/NServiceBusContrib.Persistence.Sqlite/NServiceBusContrib.Persistence.Sqlite.csproj` targeting `net10.0`, with `Microsoft.Data.Sqlite` and `NServiceBus` package references plus `Particular.Analyzers`.
+- [ ] Add `src/NServiceBusContrib.Persistence.Sqlite.Tests/` (unit tests, NUnit).
+- [ ] Add `src/NServiceBusContrib.Persistence.Sqlite.PersistenceTests/` referencing the NServiceBus persistence test pack.
+- [ ] Add `src/NServiceBusContrib.Persistence.Sqlite.AcceptanceTests/` referencing `NServiceBus.AcceptanceTests` shared sources.
+- [ ] Add `src/NServiceBusContrib.Persistence.Sqlite.TransactionalSession/` and matching `*.AcceptanceTests`.
 - [ ] Add a top-level solution file, `Directory.Build.props`, `Directory.Packages.props` (centralised package versions).
 - [ ] Add `global.json` pinned to .NET 10 with `rollForward=latestFeature`.
 - [ ] Add boilerplate top-level docs (`README.md`, `Package-README.md`, `LICENSE.md`, `CONTRIBUTING.md`, `SECURITY.md`).
@@ -262,7 +262,7 @@ Each phase ends in a buildable, testable state. Steps are ordered so unit tests 
 
 ### Phase 10: TransactionalSession Package
 
-- [ ] Create `Messaging.Persistence.Sqlite.TransactionalSession` project.
+- [ ] Create `NServiceBusContrib.Persistence.Sqlite.TransactionalSession` project.
 - [ ] Implement `SqliteTransactionalSession : Feature` registering the outbox-transaction-based session source.
 - [ ] Implement `SqliteTransactionalSessionExtensions.EnableTransactionalSession(this PersistenceExtensions<SqlitePersistence>, TransactionalSessionOptions)`.
 - [ ] Provide `OpenSession` typed API returning `ITransactionalSession`.

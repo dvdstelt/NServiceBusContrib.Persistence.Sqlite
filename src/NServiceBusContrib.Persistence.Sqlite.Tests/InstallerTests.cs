@@ -1,0 +1,196 @@
+namespace NServiceBusContrib.Persistence.Sqlite.Tests;
+
+using NServiceBusContrib.Persistence.Sqlite.Outbox;
+using NServiceBusContrib.Persistence.Sqlite.Sagas;
+using NServiceBusContrib.Persistence.Sqlite.Subscriptions;
+using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.DependencyInjection;
+using NServiceBus.Outbox;
+using NServiceBus.Settings;
+using NServiceBus.Unicast.Subscriptions.MessageDrivenSubscriptions;
+using NUnit.Framework;
+
+[TestFixture]
+public class InstallerTests
+{
+    string dbPath = null!;
+    DefaultConnectionFactory factory = null!;
+
+    [SetUp]
+    public void SetUp()
+    {
+        dbPath = Path.Combine(Path.GetTempPath(), $"messaging-sqlite-installer-{Guid.NewGuid():N}.db");
+        factory = new DefaultConnectionFactory($"Data Source={dbPath}");
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        SqliteConnection.ClearAllPools();
+        try { File.Delete(dbPath); } catch { /* file may briefly remain locked */ }
+    }
+
+    [Test]
+    public async Task OutboxInstaller_CreatesOutboxTable()
+    {
+        var installer = new OutboxInstaller(BuildOutboxProvider(EmptySettings()));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists("OutboxRecord"), Is.True);
+    }
+
+    [Test]
+    public async Task OutboxInstaller_RunTwice_NoError()
+    {
+        var installer = new OutboxInstaller(BuildOutboxProvider(EmptySettings()));
+        await installer.Install("test", CancellationToken.None);
+        Assert.DoesNotThrowAsync(() => installer.Install("test", CancellationToken.None));
+    }
+
+    [Test]
+    public async Task OutboxInstaller_AppliesTablePrefix()
+    {
+        var installer = new OutboxInstaller(BuildOutboxProvider(SettingsWithPrefix("MyApp_")));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists("MyApp_OutboxRecord"), Is.True);
+        Assert.That(await TableExists("OutboxRecord"), Is.False);
+    }
+
+    [Test]
+    public async Task OutboxInstaller_DoesNothing_WhenOutboxFeatureNotActive()
+    {
+        // Simulates an endpoint where the outbox feature is not enabled but the installer is
+        // still discovered by assembly scanning. The installer must not create a table.
+        var installer = new OutboxInstaller(BuildBaseProvider(EmptySettings()));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists("OutboxRecord"), Is.False);
+    }
+
+    [Test]
+    public async Task SubscriptionInstaller_CreatesSubscriptionTable()
+    {
+        var installer = new SubscriptionInstaller(BuildSubscriptionProvider(EmptySettings()));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists("SubscriptionRecord"), Is.True);
+    }
+
+    [Test]
+    public async Task SubscriptionInstaller_DoesNothing_WhenSubscriptionFeatureNotActive()
+    {
+        var installer = new SubscriptionInstaller(BuildBaseProvider(EmptySettings()));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists("SubscriptionRecord"), Is.False);
+    }
+
+    [Test]
+    public async Task SagaInstaller_CreatesTablesOnlyForRegisteredSagas()
+    {
+        // The installer must build tables for sagas registered in SagaMetadataCollection,
+        // not every IContainSagaData type the assembly scanner can find. Otherwise unrelated
+        // sagas in referenced libraries get tables they will never use.
+        var cache = new SagaInfoCache(tablePrefix: TablePrefix.Empty);
+        var metadata = new NServiceBus.Sagas.SagaMetadataCollection();
+        metadata.AddRange(NServiceBus.Sagas.SagaMetadata.CreateMany([typeof(InstallerTestSaga)]));
+
+        var installer = new SagaInstaller(BuildSagaProvider(cache, metadata));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists(nameof(InstallerTestSagaData)), Is.True,
+            "the registered saga's table must be created");
+        Assert.That(await TableExists(nameof(NotRegisteredSagaData)), Is.False,
+            "an unregistered saga's table must NOT be created");
+    }
+
+    [Test]
+    public async Task SagaInstaller_DoesNothing_WhenSagaFeatureNotActive()
+    {
+        var installer = new SagaInstaller(BuildBaseProvider(EmptySettings()));
+        await installer.Install("test", CancellationToken.None);
+
+        Assert.That(await TableExists(nameof(InstallerTestSagaData)), Is.False);
+    }
+
+    IServiceProvider BuildBaseProvider(IReadOnlySettings settings)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IConnectionFactory>(factory);
+        services.AddSingleton(settings);
+        return services.BuildServiceProvider();
+    }
+
+    IServiceProvider BuildOutboxProvider(IReadOnlySettings settings)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IConnectionFactory>(factory);
+        services.AddSingleton(settings);
+        services.AddSingleton<IOutboxStorage>(sp =>
+            new SqliteOutboxPersister(sp.GetRequiredService<IConnectionFactory>(), TablePrefix.Empty, "test"));
+        return services.BuildServiceProvider();
+    }
+
+    IServiceProvider BuildSubscriptionProvider(IReadOnlySettings settings)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IConnectionFactory>(factory);
+        services.AddSingleton(settings);
+        services.AddSingleton<ISubscriptionStorage>(sp =>
+            new SqliteSubscriptionPersister(sp.GetRequiredService<IConnectionFactory>(), TablePrefix.Empty));
+        return services.BuildServiceProvider();
+    }
+
+    IServiceProvider BuildSagaProvider(SagaInfoCache cache, NServiceBus.Sagas.SagaMetadataCollection metadata)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IConnectionFactory>(factory);
+        services.AddSingleton(cache);
+        services.AddSingleton(metadata);
+        return services.BuildServiceProvider();
+    }
+
+    static IReadOnlySettings EmptySettings() => new SettingsHolder();
+
+    static IReadOnlySettings SettingsWithPrefix(string prefix)
+    {
+        var holder = new SettingsHolder();
+        holder.Set(SettingsKeys.TablePrefix, prefix);
+        return holder;
+    }
+
+    async Task<bool> TableExists(string tableName)
+    {
+        await using var conn = await factory.OpenConnection();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = $name;";
+        cmd.Parameters.AddWithValue("$name", tableName);
+        return (long)(await cmd.ExecuteScalarAsync())! == 1;
+    }
+
+    public sealed class InstallerTestSagaData : NServiceBus.ContainSagaData
+    {
+        public string Marker { get; set; } = "";
+    }
+
+    public sealed class InstallerTestSaga : NServiceBus.Saga<InstallerTestSagaData>,
+        NServiceBus.IAmStartedByMessages<InstallerTestStartMessage>
+    {
+        protected override void ConfigureHowToFindSaga(NServiceBus.SagaPropertyMapper<InstallerTestSagaData> mapper) =>
+            mapper.MapSaga(s => s.Marker).ToMessage<InstallerTestStartMessage>(m => m.Marker);
+
+        public Task Handle(InstallerTestStartMessage message, NServiceBus.IMessageHandlerContext context) =>
+            Task.CompletedTask;
+    }
+
+    public sealed class InstallerTestStartMessage : NServiceBus.ICommand
+    {
+        public string Marker { get; set; } = "";
+    }
+
+    public sealed class NotRegisteredSagaData : NServiceBus.ContainSagaData
+    {
+    }
+
+}

@@ -1,7 +1,7 @@
 using Demo.Messages;
 using Demo.TxClient;
-using Messaging.Persistence.Sqlite;
-using Messaging.Persistence.Sqlite.TransactionalSession;
+using NServiceBusContrib.Persistence.Sqlite;
+using NServiceBusContrib.Persistence.Sqlite.TransactionalSession;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using NServiceBus;

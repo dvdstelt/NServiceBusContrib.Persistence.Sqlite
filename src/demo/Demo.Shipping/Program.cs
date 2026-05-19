@@ -1,5 +1,5 @@
 using Demo.Shipping;
-using Messaging.Persistence.Sqlite;
+using NServiceBusContrib.Persistence.Sqlite;
 using NServiceBus;
 
 var dataDir = Path.Combine(Path.GetTempPath(), "nservicebuscontrib-sqlite-demo");
