@@ -6,18 +6,11 @@ using NServiceBus.AcceptanceTesting.Support;
 
 class ConfigureEndpointSqlitePersistence : IConfigureEndpointTestExecution
 {
-    const string TestDbPathKey = "NServiceBusContrib.Persistence.Sqlite.TestDbPath";
-
     string? dbPath;
 
     public Task Configure(string endpointName, EndpointConfiguration configuration, RunSettings settings, PublisherMetadata publisherMetadata)
     {
-        if (!settings.TryGet<string>(TestDbPathKey, out var sharedPath))
-        {
-            sharedPath = Path.Combine(Path.GetTempPath(), $"messaging-sqlite-acceptance-{Guid.NewGuid():N}.db");
-            settings.Set(TestDbPathKey, sharedPath);
-        }
-        dbPath = sharedPath;
+        dbPath = Path.Combine(Path.GetTempPath(), $"nservicebuscontrib-sqlite-acceptance-{endpointName}-{Guid.NewGuid():N}.db");
 
         configuration.UsePersistence<SqlitePersistence>().ConnectionString($"Data Source={dbPath}");
         configuration.EnableInstallers();
