@@ -1,6 +1,6 @@
 # Security
 
-If you believe you have found a security vulnerability in this project, please report it privately by opening a [GitHub security advisory](https://github.com/dvdstelt/Messaging.Persistence.Sqlite/security/advisories/new) rather than filing a public issue.
+If you believe you have found a security vulnerability in this project, please report it privately by opening a [GitHub security advisory](https://github.com/dvdstelt/NServiceBusContrib.Persistence.Sqlite/security/advisories/new) rather than filing a public issue.
 
 Include:
 

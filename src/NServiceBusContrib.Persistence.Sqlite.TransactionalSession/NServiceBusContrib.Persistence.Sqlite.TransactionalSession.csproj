@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>NServiceBusContrib.Persistence.Sqlite.TransactionalSession</PackageId>
+    <Description>Transactional Session support for NServiceBusContrib.Persistence.Sqlite. Community persister, not affiliated with Particular Software.</Description>
+    <PackageTags>nservicebus;sqlite;persistence;transactionalsession</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NServiceBus.TransactionalSession" Version="4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NServiceBusContrib.Persistence.Sqlite\NServiceBusContrib.Persistence.Sqlite.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\Package-README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

@@ -19,11 +19,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-      - run: dotnet restore src/Messaging.Persistence.Sqlite.slnx
-      - run: dotnet build src/Messaging.Persistence.Sqlite.slnx -c Release --no-restore
-      - run: dotnet test src/Messaging.Persistence.Sqlite.slnx -c Release --no-build
-      - run: dotnet pack src/Messaging.Persistence.Sqlite/Messaging.Persistence.Sqlite.csproj -c Release --no-build -o artifacts
-      - run: dotnet pack src/Messaging.Persistence.Sqlite.TransactionalSession/Messaging.Persistence.Sqlite.TransactionalSession.csproj -c Release --no-build -o artifacts
+      - run: dotnet restore src/NServiceBusContrib.Persistence.Sqlite.slnx
+      - run: dotnet build src/NServiceBusContrib.Persistence.Sqlite.slnx -c Release --no-restore
+      - run: dotnet test src/NServiceBusContrib.Persistence.Sqlite.slnx -c Release --no-build
+      - run: dotnet pack src/NServiceBusContrib.Persistence.Sqlite/NServiceBusContrib.Persistence.Sqlite.csproj -c Release --no-build -o artifacts
+      - run: dotnet pack src/NServiceBusContrib.Persistence.Sqlite.TransactionalSession/NServiceBusContrib.Persistence.Sqlite.TransactionalSession.csproj -c Release --no-build -o artifacts
       - uses: actions/upload-artifact@v4
         with:
           name: nupkgs

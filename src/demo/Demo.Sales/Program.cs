@@ -1,5 +1,5 @@
 using Demo.Sales;
-using Messaging.Persistence.Sqlite;
+using NServiceBusContrib.Persistence.Sqlite;
 using NServiceBus;
 
 var dataDir = DemoPaths.EnsureDataDirectory();

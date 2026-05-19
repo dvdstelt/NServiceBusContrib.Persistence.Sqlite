@@ -1,4 +1,4 @@
-# Messaging.Persistence.Sqlite
+# NServiceBusContrib.Persistence.Sqlite
 
 A community SQLite persistence package for [NServiceBus](https://particular.net/nservicebus) 10.
 

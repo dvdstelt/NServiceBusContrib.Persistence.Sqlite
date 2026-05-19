@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>NServiceBusContrib.Persistence.Sqlite</PackageId>
+    <Description>SQLite persistence for NServiceBus. Community persister, not affiliated with Particular Software.</Description>
+    <PackageTags>nservicebus;sqlite;persistence;outbox;saga;subscriptions</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NServiceBus" Version="10.1.4" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="NServiceBusContrib.Persistence.Sqlite.Tests" />
+    <InternalsVisibleTo Include="NServiceBusContrib.Persistence.Sqlite.PersistenceTests" />
+    <InternalsVisibleTo Include="NServiceBusContrib.Persistence.Sqlite.TransactionalSession" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\Package-README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
