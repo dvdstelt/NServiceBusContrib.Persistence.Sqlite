@@ -48,7 +48,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
                 ex);
         }
 
-        StashConcurrency(context, sagaDataType, 1);
+        StashConcurrency(context, sagaData.Id, 1);
     }
 
     public async Task Update(IContainSagaData sagaData, ISynchronizedStorageSession session, ContextBag context,
@@ -58,7 +58,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
         var sqliteSession = session.SqliteSession();
         var sagaDataType = sagaData.GetType();
         var info = sagaInfoCache.Get(sagaDataType);
-        var oldConcurrency = RetrieveConcurrency(context, sagaDataType);
+        var oldConcurrency = RetrieveConcurrency(context, sagaData.Id, sagaDataType);
 
         var dataJson = JsonSerializer.Serialize(sagaData, sagaDataType, SerializerOptions);
 
@@ -79,7 +79,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
                 $"The saga of type '{sagaDataType.Name}' with id '{sagaData.Id}' was updated by another process or no longer exists.");
         }
 
-        StashConcurrency(context, sagaDataType, oldConcurrency + 1);
+        StashConcurrency(context, sagaData.Id, oldConcurrency + 1);
     }
 
     public Task<TSagaData> Get<TSagaData>(Guid sagaId, ISynchronizedStorageSession session, ContextBag context,
@@ -103,7 +103,7 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
         var sqliteSession = session.SqliteSession();
         var sagaDataType = sagaData.GetType();
         var info = sagaInfoCache.Get(sagaDataType);
-        var oldConcurrency = RetrieveConcurrency(context, sagaDataType);
+        var oldConcurrency = RetrieveConcurrency(context, sagaData.Id, sagaDataType);
 
         await using var cmd = sqliteSession.CreateCommand();
         cmd.CommandText = $"DELETE FROM {info.TableName} WHERE Id = $id AND Concurrency = $old;";
@@ -139,22 +139,24 @@ sealed class SqliteSagaPersister(SagaInfoCache sagaInfoCache) : ISagaPersister
         var concurrency = reader.GetInt64(1);
 
         var sagaData = JsonSerializer.Deserialize<TSagaData>(dataJson, SerializerOptions)!;
-        StashConcurrency(context, typeof(TSagaData), concurrency);
+        StashConcurrency(context, sagaData.Id, concurrency);
         return sagaData;
     }
 
-    static string ConcurrencyKey(Type sagaDataType) =>
-        $"Messaging.Persistence.Sqlite.SagaConcurrency-{sagaDataType.FullName}";
+    // Keyed by saga Id rather than saga type so two instances of the same saga type loaded in the
+    // same pipeline (rare today but cheap to guard against) don't share a concurrency stash.
+    static string ConcurrencyKey(Guid sagaId) =>
+        $"Messaging.Persistence.Sqlite.SagaConcurrency-{sagaId:N}";
 
-    static void StashConcurrency(ContextBag context, Type sagaDataType, long concurrency) =>
-        context.Set(ConcurrencyKey(sagaDataType), concurrency);
+    static void StashConcurrency(ContextBag context, Guid sagaId, long concurrency) =>
+        context.Set(ConcurrencyKey(sagaId), concurrency);
 
-    static long RetrieveConcurrency(ContextBag context, Type sagaDataType)
+    static long RetrieveConcurrency(ContextBag context, Guid sagaId, Type sagaDataType)
     {
-        if (!context.TryGet<long>(ConcurrencyKey(sagaDataType), out var concurrency))
+        if (!context.TryGet<long>(ConcurrencyKey(sagaId), out var concurrency))
         {
             throw new InvalidOperationException(
-                $"Saga concurrency was not captured for type '{sagaDataType.Name}'. Get must be called before Update or Complete.");
+                $"Saga concurrency was not captured for '{sagaDataType.Name}' with id '{sagaId}'. Get must be called before Update or Complete.");
         }
         return concurrency;
     }

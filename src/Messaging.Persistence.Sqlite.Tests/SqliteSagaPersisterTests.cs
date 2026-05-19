@@ -186,6 +186,52 @@ public class SqliteSagaPersisterTests
     }
 
     [Test]
+    public async Task TwoSagasOfSameType_InOneContext_TrackConcurrencyIndependently()
+    {
+        // Concurrency must be stashed per saga Id, not per type. Otherwise loading saga A then
+        // saga B (both OrderSagaData) overwrites A's snapshot, and updating A would pick up B's
+        // version.
+        var a = new OrderSagaData { Id = Guid.NewGuid(), OrderId = "alpha", Quantity = 1 };
+        var b = new OrderSagaData { Id = Guid.NewGuid(), OrderId = "beta", Quantity = 2 };
+
+        await persister.Save(a, new SagaCorrelationProperty("OrderId", "alpha"), session, new ContextBag());
+        await persister.Save(b, new SagaCorrelationProperty("OrderId", "beta"), session, new ContextBag());
+        await session.CompleteAsync();
+        await session.DisposeAsync();
+
+        // Bump saga B to version 2 in its own session so the two sagas hold different versions.
+        session = new SqliteSynchronizedStorageSession(factory);
+        await session.Open(new ContextBag());
+        var bumpCtx = new ContextBag();
+        var fetchedB = await persister.Get<OrderSagaData>(b.Id, session, bumpCtx);
+        fetchedB!.Quantity = 200;
+        await persister.Update(fetchedB, session, bumpCtx);
+        await session.CompleteAsync();
+        await session.DisposeAsync();
+
+        // Now load both sagas with one ContextBag and update both. The per-Id stash must keep
+        // A's version (1) separate from B's version (2).
+        session = new SqliteSynchronizedStorageSession(factory);
+        await session.Open(new ContextBag());
+        var sharedCtx = new ContextBag();
+        var loadedA = await persister.Get<OrderSagaData>(a.Id, session, sharedCtx);
+        var loadedB = await persister.Get<OrderSagaData>(b.Id, session, sharedCtx);
+        loadedA!.Quantity = 11;
+        loadedB!.Quantity = 22;
+        await persister.Update(loadedA, session, sharedCtx);
+        await persister.Update(loadedB, session, sharedCtx);
+        await session.CompleteAsync();
+        await session.DisposeAsync();
+
+        session = new SqliteSynchronizedStorageSession(factory);
+        await session.Open(new ContextBag());
+        var finalA = await persister.Get<OrderSagaData>(a.Id, session, new ContextBag());
+        var finalB = await persister.Get<OrderSagaData>(b.Id, session, new ContextBag());
+        Assert.That(finalA!.Quantity, Is.EqualTo(11));
+        Assert.That(finalB!.Quantity, Is.EqualTo(22));
+    }
+
+    [Test]
     public async Task Update_TwoConcurrentSessions_ExactlyOneSucceeds()
     {
         // Existing concurrency tests run the two sessions sequentially. This one uses a
